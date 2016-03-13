@@ -734,7 +734,7 @@ inline unsigned int Value::toUInt(const unsigned int& defaults) const {
 }
 inline unsigned long Value::toULong(const unsigned long& defaults) const {
     switch (type_) {
-    case kInteger: return is_range(integer_, 0, ULONG_MAX) ? static_cast<unsigned long>(integer_) : defaults;
+    case kInteger: return integer_ > 0 ? static_cast<unsigned long>(integer_) : defaults;
     case kFloat: return double_to_value<unsigned long>(float_, 0, ULONG_MAX, defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<unsigned long>(container_->data<String>(), 0, ULONG_MAX, defaults);
@@ -744,7 +744,7 @@ inline unsigned long Value::toULong(const unsigned long& defaults) const {
 }
 inline unsigned long long Value::toULLong(const unsigned long long& defaults) const {
     switch (type_) {
-    case kInteger: return static_cast<unsigned long long>(integer_);
+    case kInteger: return integer_ > 0 ? static_cast<unsigned long long>(integer_) : defaults;
     case kFloat: return double_to_value<unsigned long long>(float_, 0, ULLONG_MAX, defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<unsigned long long>(container_->data<String>(), 0, ULLONG_MAX, defaults);
@@ -941,7 +941,7 @@ inline bool Parser::parse_value(Value* value, AbstractParseHandler* handler, Ite
             return this->fail("Invalid null type string exists.");
         }
     } else {
-        return this->fail("Unexpected charactor exists while parsing.");
+        return this->fail("Unexpected character exists while parsing.");
     }
 }
 template<typename Iter>
@@ -962,8 +962,8 @@ inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, It
     uint32_t digitCount = isZeroAtFirst ? 1 : 0;
     bool isOverflow = false;
     while ('0' <= *itr && *itr <= '9') {
-        if (isZeroAtFirst && *itr == '0') {
-            return this->fail("Unexpected '0' charactor is found while parsing number.");
+        if (isZeroAtFirst) {
+            return this->fail("Unexpected '0' character is found while parsing number.");
         }
         str.push_back(*itr);
         ++digitCount;
@@ -1005,13 +1005,22 @@ inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, It
             ++itr;
         }
         digitCount = 0;
+        isZeroAtFirst = *itr == '0';
+        if (isZeroAtFirst) {
+            ++itr;
+            str.pop_back();
+            if (isNegativeExp) { str.pop_back(); }
+        }
         while ('0' <= *itr && *itr <= '9') {
+            if (isZeroAtFirst) {
+                return this->fail("Unexpected '0' character is found while parsing number.");
+            }
             ++digitCount;
             str.push_back(*itr);
             exp = exp * 10 + static_cast<int32_t>(*itr - '0');
             ++itr;
         }
-        if (digitCount == 0) {
+        if (!isZeroAtFirst && digitCount == 0) {
             return this->fail("Digit is not found after exponent keyword while parsing number.");
         }
         if (isNegativeExp) { exp = -exp; }
