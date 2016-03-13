@@ -1008,8 +1008,8 @@ inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, It
         isZeroAtFirst = *itr == '0';
         if (isZeroAtFirst) {
             ++itr;
-            str.pop_back();
-            if (isNegativeExp) { str.pop_back(); }
+            str.erase(str.size() - 1);
+            if (isNegativeExp) { str.erase(str.size() - 1); }
         }
         while ('0' <= *itr && *itr <= '9') {
             if (isZeroAtFirst) {
