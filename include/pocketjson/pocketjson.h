@@ -1104,7 +1104,7 @@ inline bool Parser::parse_string(String& str, Iter& itr, const Iter& end) {
     while (++itr != end) {
         if (*itr == '"') {
             ++itr;
-            break;
+            return true;
         } else if (*itr == '\\') {
             ++itr;
             switch (*itr) {
@@ -1118,13 +1118,13 @@ inline bool Parser::parse_string(String& str, Iter& itr, const Iter& end) {
             case 't': str.push_back('\t'); break;
             case 'u': if (!this->parse_unicode(str, itr, end)) { return false; } break;
             default:
-                return this->fail("Unexpected escape charactor is found while parsing string.");
+                return this->fail("Unexpected escape character is found while parsing string.");
             }
         } else {
             str.push_back(*itr);
         }
     }
-    return true;
+    return this->fail("Expected string ending character '\"' is not found.");
 }
 template<typename Iter>
 inline bool Parser::parse_array(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOptions& options) {
