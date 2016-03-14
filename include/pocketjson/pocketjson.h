@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <string>
 #include <vector>
+#include <iterator>
 #include <map>
 
 #if (__has_feature(cxx_rvalue_references) \
@@ -34,14 +35,14 @@ enum Type {
     kContainer = kString | kObject | kArray
 }; // Type enum
 
-enum ParseOptions {
+enum ParseOption {
     kParseOptionNone = 0x00,
     kParseOptionAllowCommaEnding = 0x01,
     kParseOptionAllowGabage = 0x02,
     kParseOptionAllowLooseFormat = kParseOptionAllowCommaEnding | kParseOptionAllowGabage
-}; // ParseOptions enum
+}; // ParseOption enum
 
-enum SerializeOptions {
+enum SerializeOption {
     kSerializeOptionNone    = 0x00,
     kSerializeOptionPretty  = 0x80,
     kSerializeOption2Spaces = 0x00,
@@ -49,7 +50,7 @@ enum SerializeOptions {
     kSerializeOptionTab     = 0x02,
     kSerializeOptionTabMask = 0x03,
     kSerializeOptionLineBreakCRLF = 0x04
-}; // SerializeOptions enum
+}; // SerializeOption enum
 
 /**
  * Json value class.
@@ -120,6 +121,7 @@ public:
     void clear();
 
     void setType(const Type& t);
+    void setNull();
     void setBoolean(const bool& v);
     void setInteger(const char& v);
     void setInteger(const short& v);
@@ -138,9 +140,10 @@ public:
     void setObject(const Object& v);
 
 public:
-    template<typename StringType>
-    bool serialize(StringType& str, const SerializeOptions& options = kSerializeOptionNone, String* errorMessage = 0) const;
-    String serialize(const SerializeOptions& options = kSerializeOptionNone, String* errorMessage = 0) const;
+    template<typename Iter>
+    bool serialize(const Iter& itr, const SerializeOption& options = kSerializeOptionNone, String* errorMessage = 0) const;
+    bool serialize(String& str, const SerializeOption& options = kSerializeOptionNone, String* errorMessage = 0) const;
+    String serialize(const SerializeOption& options = kSerializeOptionNone, String* errorMessage = 0) const;
 
 public:
     const Type& type() const;
@@ -219,11 +222,11 @@ public:
 }; // AbstractParseHandler class
 
 template<typename Iter>
-inline Value parse(const Iter& begin, const Iter& end, const ParseOptions& options = kParseOptionNone, String* errorMessage = 0);
-inline Value parse(const String& str, const ParseOptions& options = kParseOptionNone, String* errorMessage = 0);
+inline Value parse(const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
+inline Value parse(const String& str, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
 template<typename Iter>
-inline bool parse(Value& value, const Iter& begin, const Iter& end, const ParseOptions& options = kParseOptionNone, String* errorMessage = 0);
-inline bool parse(Value& value, const String& str, const ParseOptions& options = kParseOptionNone, String* errorMessage = 0);
+inline bool parse(Value& value, const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
+inline bool parse(Value& value, const String& str, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
 
 
 /*-----------------------------------------------------------
@@ -238,20 +241,20 @@ public:
     inline ~Parser() {}
 
 public:
-    template<typename Iter> bool parse(Value& value, const Iter& begin, const Iter& end, const ParseOptions& options = kParseOptionNone, String* errorMessage = 0);
-    template<typename Iter> bool parse(AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOptions& options = kParseOptionNone, String* errorMessage = 0);
+    template<typename Iter> bool parse(Value& value, const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
+    template<typename Iter> bool parse(AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
 
 private:
-    template<typename Iter> bool parse(Value* value, AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOptions& options = kParseOptionNone, String* errorMessage = 0);
+    template<typename Iter> bool parse(Value* value, AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
 
-    template<typename Iter> bool parse_value(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOptions& options);
+    template<typename Iter> bool parse_value(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options);
     template<typename Iter> bool parse_number(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end);
     template<typename Iter> bool parse_string(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end);
     template<typename Iter> bool parse_hex(uint16_t& hex, Iter& itr, const Iter& end);
     template<typename Iter> bool parse_unicode(String& str, Iter& itr, const Iter& end);
     template<typename Iter> bool parse_string(String& str, Iter& itr, const Iter& end);
-    template<typename Iter> bool parse_array(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOptions& options);
-    template<typename Iter> bool parse_object(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOptions& options);
+    template<typename Iter> bool parse_array(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options);
+    template<typename Iter> bool parse_object(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options);
     template<typename CharType> bool is_white_space(const CharType& c);
     template<typename Iter> void skip_white_space(Iter& itr, const Iter& end);
     template<typename Iter> void skip_utf8_bom(Iter& itr, const Iter& end);
@@ -269,13 +272,11 @@ public:
     inline ~Serializer() {}
 
 public:
-    template<typename StringType> bool serialize(StringType& str, const Value& value, const SerializeOptions& options = kSerializeOptionNone, String* errorMessage = 0) const;
+    template<typename Iter> bool serialize(const Iter& itr, const Value& value, const SerializeOption& options = kSerializeOptionNone, String* errorMessage = 0) const;
 
 public:
-    template<typename StringType> static StringType& int64ToString(StringType& str, const int64_t& value);
+    template<typename Iter> static void int64ToString(Iter itr, const int64_t& value);
     static String int64ToString(const int64_t& value);
-    template<typename StringType> static StringType& uint64ToString(StringType& str, const uint64_t& value);
-    static String uint64ToString(const uint64_t& value);
 
 private:
     struct Attributes {
@@ -284,10 +285,10 @@ private:
         String lineBreak;
     }; // Attributes struct
 
-    template<typename StringType> bool serialize(StringType& str, const Value& value, const Attributes& attr, const int32_t& indentLevel, String* errorMessage = 0) const;
-    template<typename StringType> void serialize_string(StringType& str, const String& value) const;
-    template<typename StringType> void indent(StringType& str, const Attributes& attr, const int32_t& indent) const;
-    template<typename StringType> void append(StringType& str, const String& app) const;
+    template<typename Iter> bool serialize(Iter& itr, const Value& value, const Attributes& attr, const int& indentLevel, String* errorMessage = 0) const;
+    template<typename Iter> void serialize_string(Iter& itr, const String& value) const;
+    template<typename Iter> void indent(Iter& itr, const Attributes& attr, const int& indent) const;
+    template<typename Iter> void append(Iter& itr, const String& app) const;
 
 }; // Serializer class
 
@@ -299,9 +300,9 @@ public:
     inline ~Double() {}
 
 public:
-    inline int32_t sign() const { return isMinus() ? -1 : 1; }
+    inline int sign() const { return isMinus() ? -1 : 1; }
     inline uint64_t significand() const { return u_ & kSignificandMask; }
-    inline int32_t exponent() const { return static_cast<int32_t>((u_ & kExponentMask) >> kSignificandBitSize) - kExponentBias; }
+    inline int exponent() const { return static_cast<int>((u_ & kExponentMask) >> kSignificandBitSize) - kExponentBias; }
 
     inline bool isMinus() const { return u_ & kSignMask; }
     inline bool isZero() const { return (u_ & (kExponentMask | kSignificandMask)) == 0; }
@@ -313,20 +314,20 @@ public:
     static const uint64_t kSignMask = 0x8000000000000000;
     static const uint64_t kExponentMask = 0x7ff0000000000000;
     static const uint64_t kSignificandMask = 0x000fffffffffffff;
-    static const int32_t kSignificandBitSize = 52;
-    static const int32_t kExponentBias = 0x3ff;
+    static const int kSignificandBitSize = 52;
+    static const int kExponentBias = 0x3ff;
 
-    template<typename StringType>
-    inline bool toString(StringType& str) const {
+    template<typename Iter>
+    inline bool toString(Iter itr) const {
         if (isZero()) {
-            str.push_back('0'); str.push_back('.'); str.push_back('0');
+            *itr++ = '0'; *itr++ = '.'; *itr++ = '0';
             return true;
         } else if (isNan()) {
-            str.push_back('n'); str.push_back('a'); str.push_back('n');
+            *itr++ = 'n'; *itr++ = 'a'; *itr++ = 'n';
             return false;
         } else if (isInf()) {
-            if (isMinus()) { str.push_back('-'); }
-            str.push_back('i'); str.push_back('n'); str.push_back('f');
+            if (isMinus()) { *itr++ = '-'; }
+            *itr++ = 'i'; *itr++ = 'n'; *itr++ = 'f';
             return false;
         } else {
             char buf[128] = {0};
@@ -336,13 +337,13 @@ public:
             const auto s = snprintf(buf, 127, "%.17g", d_);
 #endif
             for (int i = 0; i < s; ++i) {
-                str.push_back(buf[i]);
+                *itr++ = buf[i];
             }
             return true;
         }
     }
     inline String toString() const {
-        String str; this->toString(str); return str;
+        String s; this->toString(std::back_inserter(s)); return s;
     }
 
 private:
@@ -364,41 +365,41 @@ public:
     inline ~CodePoint() {}
 
 public:
-    template<typename StringType>
-    inline void toUtf8(StringType& str) const {
+    template<typename Iter>
+    inline void toUtf8(Iter itr) const {
         if (value_ < 0x80) {
-            this->to7BitUtf8(str);
+            this->to7BitUtf8(itr);
         } else if (value_ < 0x0800) {
-            this->to11BitUtf8(str);
+            this->to11BitUtf8(itr);
         } else if (value_ < 0x010000) {
-            this->to16BitUtf8(str);
+            this->to16BitUtf8(itr);
         } else {
-            this->to21BitUtf8(str);
+            this->to21BitUtf8(itr);
         }
     }
 
 private:
-    template<typename StringType>
-    inline void to7BitUtf8(StringType& str) const {
-        str.push_back(bytes_[0]);
+    template<typename Iter>
+    inline void to7BitUtf8(Iter& itr) const {
+        *itr++ = bytes_[0];
     }
-    template<typename StringType>
-    inline void to11BitUtf8(StringType& str) const {
-        str.push_back(0xc0 | (value_ >> 6));
-        str.push_back(0x80 | (bytes_[0] & 0x3f));
+    template<typename Iter>
+    inline void to11BitUtf8(Iter& itr) const {
+        *itr++ = 0xc0 | (value_ >> 6);
+        *itr++ = 0x80 | (bytes_[0] & 0x3f);
     }
-    template<typename StringType>
-    inline void to16BitUtf8(StringType& str) const {
-        str.push_back(0xe0 | (value_ >> 12));
-        str.push_back(0x80 | ((value_ >> 6) & 0x3f));
-        str.push_back(0x80 | (bytes_[0] & 0x3f));
+    template<typename Iter>
+    inline void to16BitUtf8(Iter& itr) const {
+        *itr++ = 0xe0 | (value_ >> 12);
+        *itr++ = 0x80 | ((value_ >> 6) & 0x3f);
+        *itr++ = 0x80 | (bytes_[0] & 0x3f);
     }
-    template<typename StringType>
-    inline void to21BitUtf8(StringType& str) const {
-        str.push_back(0xf0 | (value_ >> 18));
-        str.push_back(0x80 | ((value_ >> 12) & 0x3f));
-        str.push_back(0x80 | ((value_ >> 6) & 0x3f));
-        str.push_back(0x80 | (bytes_[0] & 0x3f));
+    template<typename Iter>
+    inline void to21BitUtf8(Iter& itr) const {
+        *itr++ = 0xf0 | (value_ >> 18);
+        *itr++ = 0x80 | ((value_ >> 12) & 0x3f);
+        *itr++ = 0x80 | ((value_ >> 6) & 0x3f);
+        *itr++ = 0x80 | (bytes_[0] & 0x3f);
     }
 
 private:
@@ -572,12 +573,12 @@ inline void Value::erase(const String& key) {
         container_->data<Object>().erase(key);
     }
 }
-
 inline void Value::clear() {
-    if (type_ != kNull) {
-        this->release();
-        type_ = kNull;
-        integer_ = 0;
+    switch (type_) {
+    case kString: container_->data<String>().clear(); break;
+    case kObject: container_->data<Object>().clear(); break;
+    case kArray: container_->data<Array>().clear(); break;
+    default: integer_ = 0; break;
     }
 }
 inline void Value::setType(const Type& type) {
@@ -590,6 +591,13 @@ inline void Value::setType(const Type& type) {
         case kArray: container_ = new Container<Array>(); break;
         default: integer_ = 0; break;
         };
+    }
+}
+inline void Value::setNull() {
+    if (type_ != kNull) {
+        this->release();
+        type_ = kNull;
+        integer_ = 0;
     }
 }
 #define _POCKETJSON_SET_PRIMITIVE_IMPL(type, target) this->release(); type_ = type; target = v
@@ -615,12 +623,15 @@ inline void Value::setArray(const Array& v) { _POCKETJSON_SET_CONAINER_IMPL(kArr
 inline void Value::setObject(const Object& v) { _POCKETJSON_SET_CONAINER_IMPL(kObject, Object); }
 #undef JSON_SET_CONAINER_IMPL
 
-template<typename StringType>
-inline bool Value::serialize(StringType& str, const SerializeOptions& options, String* errorMessage) const {
-    Serializer s; return s.serialize(str, *this, options, errorMessage);
+template<typename Iter>
+inline bool Value::serialize(const Iter& itr, const SerializeOption& options, String* errorMessage) const {
+    Serializer s; return s.serialize(itr, *this, options, errorMessage);
 }
-inline String Value::serialize(const SerializeOptions& options, String* errorMessage) const {
-    String s; this->serialize(s, options, errorMessage); return s;
+inline bool Value::serialize(String& str, const SerializeOption& options, String* errorMessage) const {
+    String s; return this->serialize(std::back_inserter(s), options, errorMessage);
+}
+inline String Value::serialize(const SerializeOption& options, String* errorMessage) const {
+    String s; this->serialize(std::back_inserter(s), options, errorMessage); return s;
 }
 
 inline const Type& Value::type() const { return type_; }
@@ -850,21 +861,21 @@ inline void Value::release() {
 }
 
 template<typename Iter>
-inline Value parse(const Iter& begin, const Iter& end, const ParseOptions& options, String* errorMessage) {
+inline Value parse(const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
     Parser parser;
     Value value;
     parser.parse(value, begin, end, options, errorMessage);
     return value;
 }
-inline Value parse(const String& str, const ParseOptions& options, String* errorMessage) {
+inline Value parse(const String& str, const ParseOption& options, String* errorMessage) {
     return parse(str.begin(), str.end(), options, errorMessage);
 }
 template<typename Iter>
-inline bool parse(Value& value, const Iter& begin, const Iter& end, const ParseOptions& options, String* errorMessage) {
+inline bool parse(Value& value, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
     Parser parser;
     return parser.parse(value, begin, end, options, errorMessage);
 }
-inline bool parse(Value& value, const String& str, const ParseOptions& options, String* errorMessage) {
+inline bool parse(Value& value, const String& str, const ParseOption& options, String* errorMessage) {
     return parse(value, str.begin(), str.end(), options, errorMessage);
 }
 
@@ -872,16 +883,16 @@ inline bool parse(Value& value, const String& str, const ParseOptions& options, 
  * Parser class impelemtation.
  */
 template<typename Iter>
-inline bool Parser::parse(Value& value, const Iter& begin, const Iter& end, const ParseOptions& options, String* errorMessage) {
+inline bool Parser::parse(Value& value, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
     return this->parse(&value, 0, begin, end, options, errorMessage);
 }
 template<typename Iter>
-inline bool Parser::parse(AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOptions& options, String* errorMessage) {
+inline bool Parser::parse(AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
     return this->parse(0, handler, begin, end, options, errorMessage);
 }
 
 template<typename Iter>
-inline bool Parser::parse(Value* value, AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOptions& options, String* errorMessage) {
+inline bool Parser::parse(Value* value, AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
     lastError_.clear();
     Iter itr = begin;
     this->skip_utf8_bom(itr, end);
@@ -900,7 +911,7 @@ inline bool Parser::parse(Value* value, AbstractParseHandler* handler, const Ite
 }
 
 template<typename Iter>
-inline bool Parser::parse_value(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOptions& options) {
+inline bool Parser::parse_value(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
     this->skip_white_space(itr, end);
     if (*itr == '"') {
         return this->parse_string(value, handler, itr, end);
@@ -937,7 +948,7 @@ inline bool Parser::parse_value(Value* value, AbstractParseHandler* handler, Ite
     } else if (*itr == 'n') {
         if (*(++itr) == 'u' && *(++itr) == 'l' && *(++itr) == 'l') {
             if (value) {
-                value->clear();
+                value->setNull();
             } else if (handler && !handler->onNull()) {
                 return this->fail("SAX handler cancels parsing.");
             }
@@ -976,7 +987,7 @@ inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, It
         if (isOverflow || (uinteger >= 922337203685477580ULL && int(*itr - '0') > 7)) {
             isOverflow = true;
         } else {
-            uinteger = uinteger * 10 + static_cast<int32_t>(*itr - '0');
+            uinteger = uinteger * 10 + static_cast<int>(*itr - '0');
         }
         ++itr;
     }
@@ -998,8 +1009,10 @@ inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, It
         }
     }
 
-    int32_t exp = 0;
+    int exp = 0;
+    bool expExists = false;
     if (*itr == 'e' || *itr == 'E') {
+        expExists = true;
         str.push_back('e');
         bool isNegativeExp = false;
         ++itr;
@@ -1011,22 +1024,13 @@ inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, It
             ++itr;
         }
         digitCount = 0;
-        isZeroAtFirst = *itr == '0';
-        if (isZeroAtFirst) {
-            ++itr;
-            str.erase(str.size() - 1);
-            if (isNegativeExp) { str.erase(str.size() - 1); }
-        }
         while ('0' <= *itr && *itr <= '9') {
-            if (isZeroAtFirst) {
-                return this->fail("Unexpected '0' character is found while parsing number.");
-            }
             ++digitCount;
             str.push_back(*itr);
-            exp = exp * 10 + static_cast<int32_t>(*itr - '0');
+            exp = exp * 10 + static_cast<int>(*itr - '0');
             ++itr;
         }
-        if (!isZeroAtFirst && digitCount == 0) {
+        if (digitCount == 0) {
             return this->fail("Digit is not found after exponent keyword while parsing number.");
         }
         if (isNegativeExp) { exp = -exp; }
@@ -1040,6 +1044,7 @@ inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, It
             return this->fail("SAX handler cancels parsing.");
         }
     } else {
+        if (expExists && exp == 0) { str.erase(str.find('e')); }
         char* endp = 0;
         const double f64 = strtod(str.c_str(), &endp);
         if (endp == str.c_str() + str.size()) {
@@ -1102,7 +1107,7 @@ inline bool Parser::parse_unicode(String& str, Iter& itr, const Iter& end) {
         }
     }
     CodePoint cp(u1, u2);
-    cp.toUtf8(str);
+    cp.toUtf8(std::back_inserter(str));
     return true;
 }
 template<typename Iter>
@@ -1133,7 +1138,7 @@ inline bool Parser::parse_string(String& str, Iter& itr, const Iter& end) {
     return this->fail("Expected string ending character '\"' is not found.");
 }
 template<typename Iter>
-inline bool Parser::parse_array(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOptions& options) {
+inline bool Parser::parse_array(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
     size_t count = 0;
     if (value) {
         value->setType(kArray);
@@ -1182,7 +1187,7 @@ inline bool Parser::parse_array(Value* value, AbstractParseHandler* handler, Ite
     return true;
 }
 template<typename Iter>
-inline bool Parser::parse_object(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOptions& options) {
+inline bool Parser::parse_object(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
     size_t count = 0;
     if (value) {
         value->setType(kObject);
@@ -1265,8 +1270,8 @@ inline bool Parser::fail(const String& error) {
 /**
  * Serializer class implementation.
  */
-template<typename StringType>
-inline bool Serializer::serialize(StringType& str, const Value& value, const SerializeOptions& options, String* errorMessage) const {
+template<typename Iter>
+inline bool Serializer::serialize(const Iter& itr, const Value& value, const SerializeOption& options, String* errorMessage) const {
     Attributes attr;
     attr.pretty = options & kSerializeOptionPretty;
     if (attr.pretty) {
@@ -1277,11 +1282,12 @@ inline bool Serializer::serialize(StringType& str, const Value& value, const Ser
         }
         attr.lineBreak = (options & kSerializeOptionLineBreakCRLF) ? "\r\n" : "\n";
     }
-    return this->serialize(str, value, attr, attr.pretty ? 0 : -1, errorMessage);
+    Iter tmp = itr;
+    return this->serialize(tmp, value, attr, attr.pretty ? 0 : -1, errorMessage);
 }
 
-template<typename StringType>
-inline StringType& Serializer::int64ToString(StringType& str, const int64_t& value) {
+template<typename Iter>
+inline void Serializer::int64ToString(Iter itr, const int64_t& value) {
     char buf[128] = {0};
 #ifdef _MSC_VER
     const auto s = _snprintf_s(buf, 127, _TRUNCATE, "%lld", value);
@@ -1289,85 +1295,84 @@ inline StringType& Serializer::int64ToString(StringType& str, const int64_t& val
     const auto s = snprintf(buf, 127, "%lld", value);
 #endif
     for (int i = 0; i < s; ++i) {
-        str.push_back(buf[i]);
+        *itr++ = buf[i];
     }
-    return str;
 }
 inline String Serializer::int64ToString(const int64_t& value) {
-    String str; return Serializer::int64ToString(str, value);
+    String s; Serializer::int64ToString(std::back_inserter(s), value); return s;
 }
 
-template<typename StringType>
-inline bool Serializer::serialize(StringType& str, const Value& value, const Attributes& attr, const int32_t& indentLevel, String* errorMessage) const {
+template<typename Iter>
+inline bool Serializer::serialize(Iter& itr, const Value& value, const Attributes& attr, const int& indentLevel, String* errorMessage) const {
     switch (value.type()) {
-    case kNull: this->append(str, "null"); break;
+    case kNull: this->append(itr, "null"); break;
     case kBoolean:
     case kInteger:
-        this->append(str, value.toString()); break;
+        this->append(itr, value.toString()); break;
     case kFloat: {
         Double d(value.as<double>());
         if (d.isNanOrInf()) {
             if (errorMessage) { *errorMessage = "Floating point is nan or inf."; }
             return false;
         }
-        this->append(str, value.toString()); break;
+        this->append(itr, value.toString()); break;
         break;
     }
     case kString: {
-        this->serialize_string(str, value.as<String>());
+        this->serialize_string(itr, value.as<String>());
         break;
     }
     case kObject: {
         auto indent = indentLevel;
-        str.push_back('{');
+        *itr++ = '{';
         if (indent > -1) {
             ++indent;
         }
         const auto& object = value.as<Object>();
-        for (auto itr = object.begin(); itr != object.end(); ++itr) {
-            if (itr != object.begin()) { str.push_back(','); }
+        for (auto oitr = object.begin(); oitr != object.end(); ++oitr) {
+            if (oitr != object.begin()) { *itr++ = ','; }
             if (indent > -1) {
-                this->indent(str, attr, indent);
+                this->indent(itr, attr, indent);
             }
-            this->serialize_string(str, itr->first);
-            str.push_back(':');
-            if (attr.pretty) { str.push_back(' '); }
-            if (!this->serialize(str, itr->second, attr, indent, errorMessage)) {
+            this->serialize_string(itr, oitr->first);
+            *itr++ = ':';
+            if (attr.pretty) { *itr++ = ' '; }
+            if (!this->serialize(itr, oitr->second, attr, indent, errorMessage)) {
                 return false;
             }
         }
         if (indent > -1) {
             --indent;
             if (!object.empty()) {
-                this->indent(str, attr, indent);
+                this->indent(itr, attr, indent);
             }
         }
-        str.push_back('}');
+        *itr++ = '}';
         break;
     }
     case kArray: {
         auto indent = indentLevel;
-        str.push_back('[');
+        *itr++ = '[';
         if (indent > -1) {
             ++indent;
         }
         const auto& array = value.as<Array>();
         for (size_t i = 0; i < array.size(); ++i) {
-            if (i > 0) { str.push_back(','); }
+            if (i > 0) { *itr++ = ','; }
             if (indent > -1) {
-                this->indent(str, attr, indent);
+                this->indent(itr, attr, indent);
             }
-            if (!this->serialize(str, array[i], attr, indent, errorMessage)) {
+            if (!this->serialize(itr, array[i], attr, indent, errorMessage)) {
                 return false;
             }
         }
         if (indent > -1) {
             --indent;
             if (!array.empty()) {
-                this->indent(str, attr, indent);
+                this->indent(itr, attr, indent);
             }
         }
-        str.push_back(']');
+        *itr++ = ']';
         break;
     }
     default: break;
@@ -1375,8 +1380,8 @@ inline bool Serializer::serialize(StringType& str, const Value& value, const Att
     return true;
 }
 
-template<typename StringType>
-inline void Serializer::serialize_string(StringType& str, const String& value) const {
+template<typename Iter>
+inline void Serializer::serialize_string(Iter& itr, const String& value) const {
     static char kHexDigits[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
     static const char kEscape[] = {
         'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f', 'r', 'u', 'u', // 00
@@ -1396,38 +1401,38 @@ inline void Serializer::serialize_string(StringType& str, const String& value) c
           0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, // e0
           0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0  // f0
     };
-    str.push_back('"');
+    *itr++ = '"';
     for (size_t i = 0; i < value.size(); ++i) {
         const char ch = kEscape[static_cast<uint8_t>(value[i])];
         if (ch == 0) {
-            str.push_back(value[i]);
+            *itr++ = value[i];
         } else {
-            str.push_back('\\');
-            str.push_back(ch);
+            *itr++ = '\\';
+            *itr++ =  ch;
             if (ch == 'u') {
-                str.push_back('0');
-                str.push_back('0');
-                str.push_back(kHexDigits[(value[i] >> 4) & 0xf]);
-                str.push_back(kHexDigits[value[i] & 0xf]);
+                *itr++ = '0';
+                *itr++ = '0';
+                *itr++ = kHexDigits[(value[i] >> 4) & 0xf];
+                *itr++ = kHexDigits[value[i] & 0xf];
             }
         }
     }
-    str.push_back('"');
+    *itr++ = '"';
 }
 
-template<typename StringType>
-inline void Serializer::indent(StringType& str, const Attributes& attr, const int32_t& indent) const {
+template<typename Iter>
+inline void Serializer::indent(Iter& itr, const Attributes& attr, const int& indent) const {
     if (attr.pretty) {
-        this->append(str, attr.lineBreak);
-        for (int32_t i = 0; i < indent; ++i) {
-            this->append(str, attr.tab);
+        this->append(itr, attr.lineBreak);
+        for (int i = 0; i < indent; ++i) {
+            this->append(itr, attr.tab);
         }
     }
 }
-template<typename StringType>
-inline void Serializer::append(StringType& str, const String& app) const {
+template<typename Iter>
+inline void Serializer::append(Iter& itr, const String& app) const {
     for (size_t i = 0; i < app.size(); ++i) {
-        str.push_back(app[i]);
+        *itr++ = app[i];
     }
 }
 
