@@ -9,6 +9,12 @@
 #include <vector>
 #include <map>
 
+#if (__has_feature(cxx_rvalue_references) \
+    || defined(__GXX_EXPERIMENTAL_CXX0X__) \
+    || (defined(_MSC_VER) && _MSC_VER >= 1600))
+#define _POCKETJSON_HAS_RVALUE_REFERENCES
+#endif
+
 namespace pocketjson {
 
 class Value;
@@ -92,7 +98,7 @@ public:
     Value& operator =(const Object& rhs);
     Value& operator =(const Value& rhs);
 
-#if __cplusplus >= 201103L
+#ifdef _POCKETJSON_HAS_RVALUE_REFERENCES
     Value(Value&& v);
     Value& operator =(Value&& rhs);
 #endif
@@ -500,7 +506,7 @@ inline Value& Value::operator =(const Value& rhs) {
     return *this;
 }
 
-#if __cplusplus >= 201103L
+#ifdef _POCKETJSON_HAS_RVALUE_REFERENCES
 inline Value::Value(Value&& v): type_(v.type_), integer_(v.integer_) { v.integer_ = 0; }
 inline Value& Value::operator =(Value&& rhs) {
     if (this != &rhs) {
