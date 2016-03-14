@@ -147,10 +147,14 @@ TEST(ParseNumber, TestExpNumber) {
     EXPECT_EQ(92.1, v.as<double>());
     EXPECT_TRUE(pocketjson::parse(v, "92.1e+0"));
     EXPECT_EQ(92.1, v.as<double>());
+    EXPECT_TRUE(pocketjson::parse(v, "92.1e+01"));
+    EXPECT_EQ(921.0, v.as<double>());
     EXPECT_TRUE(pocketjson::parse(v, "92.1e-0"));
     EXPECT_EQ(92.1, v.as<double>());
     EXPECT_TRUE(pocketjson::parse(v, "92e-0"));
     EXPECT_EQ(92, v.as<int64_t>());
+    EXPECT_TRUE(pocketjson::parse(v, "1.0e00"));
+    EXPECT_EQ(1.0, v.as<double>());
 }
 
 TEST(ParseNumber, TestMinusFail) {
@@ -166,7 +170,6 @@ TEST(ParseNumber, TestZeroFail) {
     pocketjson::Value v = true;
     EXPECT_FALSE(pocketjson::parse(v, "00"));
     EXPECT_FALSE(pocketjson::parse(v, "01"));
-    EXPECT_FALSE(pocketjson::parse(v, "0.0e00"));
     EXPECT_FALSE(pocketjson::parse(v, "+0"));
     EXPECT_TRUE(v.isBoolean());
 }

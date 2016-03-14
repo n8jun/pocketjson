@@ -12,6 +12,12 @@ set(TEST_SOURCES
     parse_string.cc
     parse_array.cc
     parse_object.cc
+    serialize_null.cc
+    serialize_boolean.cc
+    serialize_number.cc
+    serialize_string.cc
+    serialize_array.cc
+    serialize_object.cc
 )
 
 add_executable(unittest ${TEST_SOURCES})
