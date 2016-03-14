@@ -43,13 +43,16 @@ enum ParseOption {
 }; // ParseOption enum
 
 enum SerializeOption {
-    kSerializeOptionNone    = 0x00,
-    kSerializeOptionPretty  = 0x80,
-    kSerializeOption2Spaces = 0x00,
+    kSerializeOptionNone = 0x00,
     kSerializeOption4Spaces = 0x01,
-    kSerializeOptionTab     = 0x02,
-    kSerializeOptionTabMask = 0x03,
-    kSerializeOptionLineBreakCRLF = 0x04
+    kSerializeOptionTab = 0x02,
+    kSerializeOptionCRLF = 0x04,
+    kSerializeOptionPretty = 0x80,
+    kSerializeOptionPretty4Spaces = kSerializeOptionPretty | kSerializeOption4Spaces,
+    kSerializeOptionPrettyTab = kSerializeOptionPretty | kSerializeOptionTab,
+    kSerializeOptionPrettyCRLF = kSerializeOptionPretty | kSerializeOptionCRLF,
+    kSerializeOptionPretty4SpacesCRLF = kSerializeOptionPretty | kSerializeOption4Spaces | kSerializeOptionCRLF,
+    kSerializeOptionPrettyTabCRLF = kSerializeOptionPretty | kSerializeOptionTab | kSerializeOptionCRLF
 }; // SerializeOption enum
 
 /**
@@ -1275,12 +1278,12 @@ inline bool Serializer::serialize(const Iter& itr, const Value& value, const Ser
     Attributes attr;
     attr.pretty = options & kSerializeOptionPretty;
     if (attr.pretty) {
-        switch (options & kSerializeOptionTabMask) {
+        switch (options & 0x03) {
         case kSerializeOption4Spaces: attr.tab = "    "; break;
         case kSerializeOptionTab: attr.tab = "\t"; break;
         default: attr.tab = "  "; break;
         }
-        attr.lineBreak = (options & kSerializeOptionLineBreakCRLF) ? "\r\n" : "\n";
+        attr.lineBreak = (options & kSerializeOptionCRLF) ? "\r\n" : "\n";
     }
     Iter tmp = itr;
     return this->serialize(tmp, value, attr, attr.pretty ? 0 : -1, errorMessage);
