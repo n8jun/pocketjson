@@ -10,11 +10,15 @@
 #include <iterator>
 #include <map>
 
-#if (__has_feature(cxx_rvalue_references) \
-    || defined(__GXX_EXPERIMENTAL_CXX0X__) \
-    || (defined(_MSC_VER) && _MSC_VER >= 1600))
+#ifdef _MSC_VER
+#if _MSC_VER >= 1600
 #define _POCKETJSON_HAS_RVALUE_REFERENCES
 #endif
+#else
+#if (__has_feature(cxx_rvalue_references) || defined(__GXX_EXPERIMENTAL_CXX0X__))
+#define _POCKETJSON_HAS_RVALUE_REFERENCES
+#endif
+#endif // _MSC_VER
 
 namespace pocketjson {
 
@@ -307,7 +311,7 @@ public:
     inline uint64_t significand() const { return u_ & kSignificandMask; }
     inline int exponent() const { return static_cast<int>((u_ & kExponentMask) >> kSignificandBitSize) - kExponentBias; }
 
-    inline bool isMinus() const { return u_ & kSignMask; }
+    inline bool isMinus() const { return u_ & kSignMask ? true : false; }
     inline bool isZero() const { return (u_ & (kExponentMask | kSignificandMask)) == 0; }
     inline bool isNan() const { return isNanOrInf() && significand() != 0; }
     inline bool isInf() const { return isNanOrInf() && significand() == 0; }
@@ -335,9 +339,9 @@ public:
         } else {
             char buf[128] = {0};
 #ifdef _MSC_VER
-            const auto s = _snprintf_s(buf, 127, _TRUNCATE, "%.17g", d_);
+            const int s = _snprintf_s(buf, 127, _TRUNCATE, "%.17g", d_);
 #else
-            const auto s = snprintf(buf, 127, "%.17g", d_);
+            const int s = snprintf(buf, 127, "%.17g", d_);
 #endif
             for (int i = 0; i < s; ++i) {
                 *itr++ = buf[i];
@@ -530,8 +534,8 @@ inline Value& Value::operator [](const String& key) {
 }
 inline const Value& Value::operator [](const String& key) const {
     if (this->isObject()) {
-        const auto& object = container_->data<Object>();
-        const auto itr = object.find(key);
+        const Object& object = container_->data<Object>();
+        const Object::const_iterator itr = object.find(key);
         return itr != object.end() ? itr->second : Value::Null();
     } else {
         return Value::Null();
@@ -539,7 +543,7 @@ inline const Value& Value::operator [](const String& key) const {
 }
 inline Value& Value::operator [](const size_t& index) {
     this->setType(kArray);
-    auto& array = container_->data<Array>();
+    Array& array = container_->data<Array>();
     if (index >= array.size()) {
         array.resize(index + 1);
     }
@@ -547,7 +551,7 @@ inline Value& Value::operator [](const size_t& index) {
 }
 inline const Value& Value::operator [](const size_t& index) const {
     if (this->isArray()) {
-        auto& array = container_->data<Array>();
+        Array& array = container_->data<Array>();
         return index < array.size() ? array[index] : Value::Null();
     } else {
         return Value::Null();
@@ -642,7 +646,7 @@ inline bool Value::isNull() const { return type_ == kNull; }
 inline bool Value::isBoolean() const { return type_ == kBoolean; }
 inline bool Value::isInteger() const { return type_ == kInteger; }
 inline bool Value::isFloat() const { return type_ == kFloat; }
-inline bool Value::isNumber() const { return type_ & kNumber; }
+inline bool Value::isNumber() const { return type_ & kNumber ? true : false; }
 inline bool Value::isString() const { return type_ == kString; }
 inline bool Value::isArray() const { return type_ == kArray; }
 inline bool Value::isObject() const { return type_ == kObject; }
@@ -657,25 +661,34 @@ inline bool Value::toBoolean(const bool& defaults) const {
     }
     return defaults;
 }
+#if defined(_MSC_VER) && _MSC_VER < 1800
+inline double round(const double& v) {
+    return v < 0.0 ? ceil(v - 0.5) : floor(v + 0.5);
+}
+inline long long strtoll(const char* nptr, char** endptr, int base) {
+    return _strtoi64(nptr, endptr, base);
+}
+#endif
+
 inline bool is_range(const int64_t& value, const int64_t& minValue, const int64_t& maxValue) {
     return minValue <= value && value <= maxValue;
 }
 template<typename T>
 inline T double_to_value(const double& value, const double& minValue, const double& maxValue, const T& defaults) {
-    const auto d = round(value);
+    const double d = round(value);
     return minValue <= d && d <= maxValue ? static_cast<T>(d) : defaults;
 }
 template<typename T>
 inline T llstr_to_value(const String& str, const T& minValue, const T& maxValue, const T& defaults) {
     char* endp = 0;
-    const auto value = strtoll(str.c_str(), &endp, 0);
+    const long long value = strtoll(str.c_str(), &endp, 0);
     return endp == str.c_str() + str.size() && is_range(value, minValue, maxValue) ? static_cast<T>(value) : defaults;
 }
 
 inline char Value::toChar(const char& defaults) const {
     switch (type_) {
     case kInteger: return is_range(integer_, CHAR_MIN, CHAR_MAX) ? static_cast<char>(integer_) : defaults;
-    case kFloat: return double_to_value<char>(float_, CHAR_MIN, CHAR_MAX, defaults);
+    case kFloat: return double_to_value<char>(float_, static_cast<double>(CHAR_MIN), static_cast<double>(CHAR_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<char>(container_->data<String>(), CHAR_MIN, CHAR_MAX, defaults);
     default: break;
@@ -685,7 +698,7 @@ inline char Value::toChar(const char& defaults) const {
 inline short Value::toShort(const short& defaults) const {
     switch (type_) {
     case kInteger: return is_range(integer_, SHRT_MIN, SHRT_MAX) ? static_cast<short>(integer_) : defaults;
-    case kFloat: return double_to_value<short>(float_, SHRT_MIN, SHRT_MAX, defaults);
+    case kFloat: return double_to_value<short>(float_, static_cast<double>(SHRT_MIN), static_cast<double>(SHRT_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<short>(container_->data<String>(), SHRT_MIN, SHRT_MAX, defaults);
     default: break;
@@ -695,7 +708,7 @@ inline short Value::toShort(const short& defaults) const {
 inline int Value::toInt(const int& defaults) const {
     switch (type_) {
     case kInteger: return is_range(integer_, INT_MIN, INT_MAX) ? static_cast<int>(integer_) : defaults;
-    case kFloat: return double_to_value<int>(float_, INT_MIN, INT_MAX, defaults);
+    case kFloat: return double_to_value<int>(float_, static_cast<double>(INT_MIN), static_cast<double>(INT_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<int>(container_->data<String>(), INT_MIN, INT_MAX, defaults);
     default: break;
@@ -705,7 +718,7 @@ inline int Value::toInt(const int& defaults) const {
 inline long Value::toLong(const long& defaults) const {
     switch (type_) {
     case kInteger: return is_range(integer_, LONG_MIN, LONG_MAX) ? static_cast<long>(integer_) : defaults;
-    case kFloat: return double_to_value<long>(float_, LONG_MIN, LONG_MAX, defaults);
+    case kFloat: return double_to_value<long>(float_, static_cast<double>(LONG_MIN), static_cast<double>(LONG_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<long>(container_->data<String>(), LONG_MIN, LONG_MAX, defaults);
     default: break;
@@ -715,7 +728,7 @@ inline long Value::toLong(const long& defaults) const {
 inline long long Value::toLLong(const long long& defaults) const {
     switch (type_) {
     case kInteger: return static_cast<long long>(integer_);
-    case kFloat: return double_to_value<long long>(float_, LLONG_MIN, LLONG_MAX, defaults);
+    case kFloat: return double_to_value<long long>(float_, static_cast<double>(LLONG_MIN), static_cast<double>(LLONG_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<long long>(container_->data<String>(), LLONG_MIN, LLONG_MAX, defaults);
     default: break;
@@ -725,7 +738,7 @@ inline long long Value::toLLong(const long long& defaults) const {
 inline unsigned char Value::toUChar(const unsigned char& defaults) const {
     switch (type_) {
     case kInteger: return is_range(integer_, 0, UCHAR_MAX) ? static_cast<unsigned char>(integer_) : defaults;
-    case kFloat: return double_to_value<unsigned char>(float_, 0, UCHAR_MAX, defaults);
+    case kFloat: return double_to_value<unsigned char>(float_, 0, static_cast<double>(UCHAR_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<unsigned char>(container_->data<String>(), 0, UCHAR_MAX, defaults);
     default: break;
@@ -735,7 +748,7 @@ inline unsigned char Value::toUChar(const unsigned char& defaults) const {
 inline unsigned short Value::toUShort(const unsigned short& defaults) const {
     switch (type_) {
     case kInteger: return is_range(integer_, 0, USHRT_MAX) ? static_cast<unsigned short>(integer_) : defaults;
-    case kFloat: return double_to_value<unsigned short>(float_, 0, USHRT_MAX, defaults);
+    case kFloat: return double_to_value<unsigned short>(float_, 0, static_cast<double>(USHRT_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<unsigned short>(container_->data<String>(), 0, USHRT_MAX, defaults);
     default: break;
@@ -745,7 +758,7 @@ inline unsigned short Value::toUShort(const unsigned short& defaults) const {
 inline unsigned int Value::toUInt(const unsigned int& defaults) const {
     switch (type_) {
     case kInteger: return is_range(integer_, 0, UINT_MAX) ? static_cast<unsigned int>(integer_) : defaults;
-    case kFloat: return double_to_value<unsigned int>(float_, 0, UINT_MAX, defaults);
+    case kFloat: return double_to_value<unsigned int>(float_, 0, static_cast<double>(UINT_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<unsigned int>(container_->data<String>(), 0, UINT_MAX, defaults);
     default: break;
@@ -755,7 +768,7 @@ inline unsigned int Value::toUInt(const unsigned int& defaults) const {
 inline unsigned long Value::toULong(const unsigned long& defaults) const {
     switch (type_) {
     case kInteger: return integer_ > 0 ? static_cast<unsigned long>(integer_) : defaults;
-    case kFloat: return double_to_value<unsigned long>(float_, 0, ULONG_MAX, defaults);
+    case kFloat: return double_to_value<unsigned long>(float_, 0, static_cast<double>(ULONG_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<unsigned long>(container_->data<String>(), 0, ULONG_MAX, defaults);
     default: break;
@@ -765,7 +778,7 @@ inline unsigned long Value::toULong(const unsigned long& defaults) const {
 inline unsigned long long Value::toULLong(const unsigned long long& defaults) const {
     switch (type_) {
     case kInteger: return integer_ > 0 ? static_cast<unsigned long long>(integer_) : defaults;
-    case kFloat: return double_to_value<unsigned long long>(float_, 0, ULLONG_MAX, defaults);
+    case kFloat: return double_to_value<unsigned long long>(float_, 0, static_cast<double>(ULLONG_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
     case kString: return llstr_to_value<unsigned long long>(container_->data<String>(), 0, ULLONG_MAX, defaults);
     default: break;
@@ -779,7 +792,7 @@ inline float Value::toFloat(const float& defaults) const {
     case kBoolean: return boolean_ ? 1.0f : 0.0f;
     case kString: {
         char* endp = 0;
-        const auto& str = container_->data<String>();
+        const String& str = container_->data<String>();
         const float value = static_cast<float>(strtod(str.c_str(), &endp));
         return endp == str.c_str() + str.size() ? value : defaults;
     }
@@ -794,7 +807,7 @@ inline double Value::toDouble(const double& defaults) const {
     case kBoolean: return boolean_ ? 1.0 : 0.0;
     case kString: {
         char* endp = 0;
-        const auto& str = container_->data<String>();
+        const String& str = container_->data<String>();
         const double value = strtod(str.c_str(), &endp);
         return endp == str.c_str() + str.size() ? value : defaults;
     }
@@ -831,7 +844,7 @@ inline size_t Value::size() const {
 }
 inline bool Value::contains(const String& key) const {
     if (this->isObject()) {
-        const auto& object = container_->data<Object>();
+        const Object& object = container_->data<Object>();
         return object.find(key) != object.end();
     }
     return false;
@@ -978,7 +991,7 @@ inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, It
         str.push_back(*itr);
         ++itr;
     }
-    uint64_t uinteger = 0;
+    int64_t integer = 0;
     uint32_t digitCount = isZeroAtFirst ? 1 : 0;
     bool isOverflow = false;
     while ('0' <= *itr && *itr <= '9') {
@@ -987,10 +1000,10 @@ inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, It
         }
         str.push_back(*itr);
         ++digitCount;
-        if (isOverflow || (uinteger >= 922337203685477580ULL && int(*itr - '0') > 7)) {
+        if (isOverflow || (integer >= 922337203685477580LL && int(*itr - '0') > 7)) {
             isOverflow = true;
         } else {
-            uinteger = uinteger * 10 + static_cast<int>(*itr - '0');
+            integer = integer * 10 + static_cast<int>(*itr - '0');
         }
         ++itr;
     }
@@ -1040,7 +1053,7 @@ inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, It
     }
 
     if (fracLength == 0 && exp == 0 && !isOverflow) {
-        const int64_t v = static_cast<int64_t>(isNegative ? -uinteger : uinteger);
+        const int64_t v = isNegative ? -integer : integer;
         if (value) {
             value->setInteger(v);
         } else if (handler && !handler->onInteger(v)) {
@@ -1276,7 +1289,7 @@ inline bool Parser::fail(const String& error) {
 template<typename Iter>
 inline bool Serializer::serialize(const Iter& itr, const Value& value, const SerializeOption& options, String* errorMessage) const {
     Attributes attr;
-    attr.pretty = options & kSerializeOptionPretty;
+    attr.pretty = options & kSerializeOptionPretty ? true : false;
     if (attr.pretty) {
         switch (options & 0x03) {
         case kSerializeOption4Spaces: attr.tab = "    "; break;
@@ -1293,9 +1306,9 @@ template<typename Iter>
 inline void Serializer::int64ToString(Iter itr, const int64_t& value) {
     char buf[128] = {0};
 #ifdef _MSC_VER
-    const auto s = _snprintf_s(buf, 127, _TRUNCATE, "%lld", value);
+    const int s = _snprintf_s(buf, 127, _TRUNCATE, "%lld", value);
 #else
-    const auto s = snprintf(buf, 127, "%lld", value);
+    const int s = snprintf(buf, 127, "%lld", value);
 #endif
     for (int i = 0; i < s; ++i) {
         *itr++ = buf[i];
@@ -1326,13 +1339,13 @@ inline bool Serializer::serialize(Iter& itr, const Value& value, const Attribute
         break;
     }
     case kObject: {
-        auto indent = indentLevel;
+        int indent = indentLevel;
         *itr++ = '{';
         if (indent > -1) {
             ++indent;
         }
-        const auto& object = value.as<Object>();
-        for (auto oitr = object.begin(); oitr != object.end(); ++oitr) {
+        const Object& object = value.as<Object>();
+        for (Object::const_iterator oitr = object.begin(); oitr != object.end(); ++oitr) {
             if (oitr != object.begin()) { *itr++ = ','; }
             if (indent > -1) {
                 this->indent(itr, attr, indent);
@@ -1354,12 +1367,12 @@ inline bool Serializer::serialize(Iter& itr, const Value& value, const Attribute
         break;
     }
     case kArray: {
-        auto indent = indentLevel;
+        int indent = indentLevel;
         *itr++ = '[';
         if (indent > -1) {
             ++indent;
         }
-        const auto& array = value.as<Array>();
+        const Array& array = value.as<Array>();
         for (size_t i = 0; i < array.size(); ++i) {
             if (i > 0) { *itr++ = ','; }
             if (indent > -1) {
