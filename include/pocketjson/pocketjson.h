@@ -1,10 +1,10 @@
 #ifndef POCKETJSON_H
 #define POCKETJSON_H
 
-#include <cstdint>
-#include <cstdio>
-#include <cmath>
-#include <climits>
+#include <stdint.h>
+#include <stdio.h>
+#include <math.h>
+#include <limits.h>
 #include <string>
 #include <vector>
 #include <iterator>
