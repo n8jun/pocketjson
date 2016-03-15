@@ -1,14 +1,15 @@
 #ifndef POCKETJSON_H
 #define POCKETJSON_H
 
-#include <stdint.h>
-#include <stdio.h>
-#include <math.h>
-#include <limits.h>
+#include <cstdint>
+#include <cstdio>
+#include <cmath>
+#include <climits>
 #include <string>
 #include <vector>
 #include <iterator>
 #include <map>
+#include <iostream>
 
 #ifdef _MSC_VER
 #if _MSC_VER >= 1600
@@ -874,6 +875,19 @@ inline void Value::release() {
         delete container_;
         container_ = 0;
     }
+}
+
+inline std::istream& operator >>(std::istream& is, Value& v) {
+    std::istreambuf_iterator<char> itr(is.rdbuf());
+    std::istreambuf_iterator<char> end;
+    if (!parse(v, itr, end)) {
+        is.setstate(std::ios::failbit);
+    }
+    return is;
+}
+inline std::ostream& operator <<(std::ostream& os, const Value& v) {
+    v.serialize(std::ostream_iterator<char>(os));
+    return os;
 }
 
 template<typename Iter>
