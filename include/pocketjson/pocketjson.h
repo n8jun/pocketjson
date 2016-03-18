@@ -433,6 +433,7 @@ public:
     inline virtual ~AbstractContainer() {}
 
 public:
+    inline const uint32_t& count() const { return referenceCount_; }
     inline void increment() { ++referenceCount_; }
     inline bool decrement() { return --referenceCount_ == 0; }
     template<typename T> inline const T& data() const;
@@ -538,6 +539,10 @@ inline const Value& Value::Null() { static Value null; return null; }
 
 inline Value& Value::operator [](const String& key) {
     this->setType(kObject);
+    if (container_->count() > 1) {
+        this->release();
+        container_ = new Container<Object>();
+    }
     return container_->data<Object>()[key];
 }
 inline const Value& Value::operator [](const String& key) const {
@@ -551,6 +556,10 @@ inline const Value& Value::operator [](const String& key) const {
 }
 inline Value& Value::operator [](const size_t& index) {
     this->setType(kArray);
+    if (container_->count() > 1) {
+        this->release();
+        container_ = new Container<Array>();
+    }
     Array& array = container_->data<Array>();
     if (index >= array.size()) {
         array.resize(index + 1);
@@ -632,7 +641,7 @@ inline void Value::setFloat(const float& v) { _POCKETJSON_SET_PRIMITIVE_IMPL(kFl
 inline void Value::setFloat(const double& v) { _POCKETJSON_SET_PRIMITIVE_IMPL(kFloat, float_); }
 #undef _POCKETJSON_SET_CAST_PRIMITIVE_IMPL
 #undef _POCKETJSON_SET_PRIMITIVE_IMPL
-#define _POCKETJSON_SET_CONAINER_IMPL(type, classType) if (type_ == type) { container_->data<classType>() = v; } else { this->release(); type_ = type; container_ = new Container<classType>(v); }
+#define _POCKETJSON_SET_CONAINER_IMPL(type, classType) if (type_ == type && container_->count() <= 1) { container_->data<classType>() = v; } else { this->release(); type_ = type; container_ = new Container<classType>(v); }
 inline void Value::setString(const String& v) { _POCKETJSON_SET_CONAINER_IMPL(kString, String); }
 inline void Value::setArray(const Array& v) { _POCKETJSON_SET_CONAINER_IMPL(kArray, Array); }
 inline void Value::setObject(const Object& v) { _POCKETJSON_SET_CONAINER_IMPL(kObject, Object); }
