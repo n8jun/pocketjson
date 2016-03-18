@@ -937,7 +937,7 @@ inline bool Parser::parse(Value* value, AbstractParseHandler* handler, const Ite
     if (ok) {
         if (!(options & kParseOptionAllowGabage)) {
             this->skip_white_space(itr, end);
-            if (*itr != 0 && itr != end) {
+            if (itr != end && *itr != 0) {
                 lastError_ = "Gabage string exists after json string.";
                 ok = false;
             }
@@ -1290,7 +1290,7 @@ template<typename CharType> inline bool Parser::is_white_space(const CharType& c
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 template<typename Iter> inline void Parser::skip_white_space(Iter& itr, const Iter& end) {
-    while (is_white_space(*itr) && itr != end) {
+    while (itr != end && is_white_space(*itr)) {
         ++itr;
     }
 }
