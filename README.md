@@ -127,4 +127,4 @@ std::string prettyJson = value.serialize(pocketjson::kSerializeOptionPretty);
 ```
 
 ## License
-pocketjson is licensed under the [MIT License](https://opensource.org/licenses/MIT).
+Distributed under the [Boost Software License, Version 1.0](http://www.boost.org/LICENSE_1_0.txt).
