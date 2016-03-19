@@ -119,8 +119,8 @@ public:
     Value& operator =(Value&& rhs);
 #endif
 
-public:
-    static const Value& Null();
+    bool operator ==(const Value& rhs) const;
+    bool operator !=(const Value& rhs) const;
 
 public:
     Value& operator [](const String& key);
@@ -185,16 +185,19 @@ public:
     float toFloat(const float& defaults = 0.0f) const;
     double toDouble(const double& defaults = 0.0) const;
     String toString(const String& defaults = "") const;
+    template<typename T> T toEnum(const T& defaults = T(0)) const;
 
     bool empty() const;
     size_t size() const;
     bool contains(const String& key) const;
     bool contains(const size_t& index) const;
 
+    template<typename T> bool is() const;
     template<typename T> T& as();
     template<typename T> const T& as() const;
 
 private:
+    static const Value& s_null();
     void release();
 
 private:
@@ -287,7 +290,7 @@ public:
     inline ~Serializer() {}
 
 public:
-    template<typename Iter> bool serialize(const Iter& itr, const Value& value, const SerializeOption& options = kSerializeOptionNone, String* errorMessage = 0) const;
+    template<typename Iter> bool serialize(const Iter& itr, const Value& value, const SerializeOption& options = kSerializeOptionNone, String* errorMessage = 0);
 
 public:
     template<typename Iter> static void int64ToString(Iter itr, const int64_t& value);
@@ -300,10 +303,10 @@ private:
         String lineBreak;
     }; // Attributes struct
 
-    template<typename Iter> bool serialize(Iter& itr, const Value& value, const Attributes& attr, const int& indentLevel, String* errorMessage = 0) const;
-    template<typename Iter> void serialize_string(Iter& itr, const String& value) const;
-    template<typename Iter> void indent(Iter& itr, const Attributes& attr, const int& indent) const;
-    template<typename Iter> void append(Iter& itr, const String& app) const;
+    template<typename Iter> bool serialize(Iter& itr, const Value& value, const Attributes& attr, const int& indentLevel, String* errorMessage = 0);
+    template<typename Iter> void serialize_string(Iter& itr, const String& value);
+    template<typename Iter> void indent(Iter& itr, const Attributes& attr, const int& indent);
+    template<typename Iter> void append(Iter& itr, const String& app);
 
 }; // Serializer class
 
@@ -523,6 +526,24 @@ inline Value& Value::operator =(const Value& rhs) {
     return *this;
 }
 
+inline bool Value::operator ==(const Value& rhs) const {
+    if (type_ != rhs.type_) { return false; }
+    switch (type_) {
+    case kNull: return true;
+    case kBoolean: return boolean_ == rhs.boolean_;
+    case kInteger: return integer_ == rhs.integer_;
+    case kFloat: return float_ == rhs.float_;
+    case kString: return container_->data<String>() == rhs.container_->data<String>();
+    case kArray: return container_->data<Array>() == rhs.container_->data<Array>();
+    case kObject: return container_->data<Object>() == rhs.container_->data<Object>();
+    default: break;
+    }
+    return false;
+}
+inline bool Value::operator !=(const Value& rhs) const {
+    return !(*this == rhs);
+}
+
 #ifdef _POCKETJSON_HAS_RVALUE_REFERENCES
 inline Value::Value(Value&& v): type_(v.type_), integer_(v.integer_) { v.integer_ = 0; }
 inline Value& Value::operator =(Value&& rhs) {
@@ -534,8 +555,6 @@ inline Value& Value::operator =(Value&& rhs) {
     return *this;
 }
 #endif
-
-inline const Value& Value::Null() { static Value null; return null; }
 
 inline Value& Value::operator [](const String& key) {
     this->setType(kObject);
@@ -549,9 +568,9 @@ inline const Value& Value::operator [](const String& key) const {
     if (this->isObject()) {
         const Object& object = container_->data<Object>();
         const Object::const_iterator itr = object.find(key);
-        return itr != object.end() ? itr->second : Value::Null();
+        return itr != object.end() ? itr->second : Value::s_null();
     } else {
-        return Value::Null();
+        return Value::s_null();
     }
 }
 inline Value& Value::operator [](const size_t& index) {
@@ -569,9 +588,9 @@ inline Value& Value::operator [](const size_t& index) {
 inline const Value& Value::operator [](const size_t& index) const {
     if (this->isArray()) {
         Array& array = container_->data<Array>();
-        return index < array.size() ? array[index] : Value::Null();
+        return index < array.size() ? array[index] : Value::s_null();
     } else {
-        return Value::Null();
+        return Value::s_null();
     }
 }
 
@@ -842,6 +861,9 @@ inline String Value::toString(const String& defaults) const {
     }
     return defaults;
 }
+template<typename T> inline T Value::toEnum(const T& defaults) const {
+    return static_cast<T>(this->toLLong(static_cast<long long>(defaults)));
+}
 
 inline bool Value::empty() const {
     switch (type_) {
@@ -873,6 +895,13 @@ inline bool Value::contains(const size_t& index) const {
     return false;
 }
 
+template<> inline bool Value::is<bool>() const { return this->isBoolean(); }
+template<> inline bool Value::is<int64_t>() const { return this->isInteger(); }
+template<> inline bool Value::is<double>() const { return this->isFloat(); }
+template<> inline bool Value::is<String>() const { return this->isString(); }
+template<> inline bool Value::is<Array>() const { return this->isArray(); }
+template<> inline bool Value::is<Object>() const { return this->isObject(); }
+
 template<> inline bool& Value::as() { return boolean_; }
 template<> inline const bool& Value::as() const { return boolean_; }
 template<> inline int64_t& Value::as() { return integer_; }
@@ -886,6 +915,7 @@ template<> inline const Array& Value::as() const { return container_->data<Array
 template<> inline Object& Value::as() { return container_->data<Object>(); }
 template<> inline const Object& Value::as() const { return container_->data<Object>(); }
 
+inline const Value& Value::s_null() { static Value null; return null; }
 inline void Value::release() {
     if ((type_ & kContainer) && container_ && container_->decrement()) {
         delete container_;
@@ -1317,7 +1347,7 @@ inline bool Parser::fail(const String& error) {
  * Serializer class implementation.
  */
 template<typename Iter>
-inline bool Serializer::serialize(const Iter& itr, const Value& value, const SerializeOption& options, String* errorMessage) const {
+inline bool Serializer::serialize(const Iter& itr, const Value& value, const SerializeOption& options, String* errorMessage) {
     Attributes attr;
     attr.pretty = options & kSerializeOptionPretty ? true : false;
     if (attr.pretty) {
@@ -1349,7 +1379,7 @@ inline String Serializer::int64ToString(const int64_t& value) {
 }
 
 template<typename Iter>
-inline bool Serializer::serialize(Iter& itr, const Value& value, const Attributes& attr, const int& indentLevel, String* errorMessage) const {
+inline bool Serializer::serialize(Iter& itr, const Value& value, const Attributes& attr, const int& indentLevel, String* errorMessage) {
     switch (value.type()) {
     case kNull: this->append(itr, "null"); break;
     case kBoolean:
@@ -1361,7 +1391,7 @@ inline bool Serializer::serialize(Iter& itr, const Value& value, const Attribute
             if (errorMessage) { *errorMessage = "Floating point is nan or inf."; }
             return false;
         }
-        this->append(itr, value.toString()); break;
+        d.toString(itr); break;
         break;
     }
     case kString: {
@@ -1427,7 +1457,7 @@ inline bool Serializer::serialize(Iter& itr, const Value& value, const Attribute
 }
 
 template<typename Iter>
-inline void Serializer::serialize_string(Iter& itr, const String& value) const {
+inline void Serializer::serialize_string(Iter& itr, const String& value) {
     static char kHexDigits[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
     static const char kEscape[] = {
         'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f', 'r', 'u', 'u', // 00
@@ -1467,7 +1497,7 @@ inline void Serializer::serialize_string(Iter& itr, const String& value) const {
 }
 
 template<typename Iter>
-inline void Serializer::indent(Iter& itr, const Attributes& attr, const int& indent) const {
+inline void Serializer::indent(Iter& itr, const Attributes& attr, const int& indent) {
     if (attr.pretty) {
         this->append(itr, attr.lineBreak);
         for (int i = 0; i < indent; ++i) {
@@ -1476,7 +1506,7 @@ inline void Serializer::indent(Iter& itr, const Attributes& attr, const int& ind
     }
 }
 template<typename Iter>
-inline void Serializer::append(Iter& itr, const String& app) const {
+inline void Serializer::append(Iter& itr, const String& app) {
     for (size_t i = 0; i < app.size(); ++i) {
         *itr++ = app[i];
     }
