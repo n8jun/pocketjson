@@ -17,6 +17,8 @@
 #include <iterator>
 #include <map>
 #include <iostream>
+#include <algorithm>
+#include <utility>
 
 #ifdef _MSC_VER
 #if _MSC_VER >= 1600
@@ -191,6 +193,8 @@ public:
     size_t size() const;
     bool contains(const String& key) const;
     bool contains(const size_t& index) const;
+
+    void swap(Value& v);
 
     template<typename T> bool is() const;
     template<typename T> T& as();
@@ -893,6 +897,11 @@ inline bool Value::contains(const size_t& index) const {
         return index < container_->data<Array>().size();
     }
     return false;
+}
+
+inline void Value::swap(Value& v) {
+    std::swap(type_, v.type_);
+    std::swap(integer_, v.integer_);
 }
 
 template<> inline bool Value::is<bool>() const { return this->isBoolean(); }
