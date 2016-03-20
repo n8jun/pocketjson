@@ -155,10 +155,10 @@ public:
     void setString(const String& v);
     void setArray(const Array& v);
     void setObject(const Object& v);
+    template<typename T> void setEnum(const T& v);
 
 public:
-    template<typename Iter>
-    bool serialize(const Iter& itr, const SerializeOption& options = kSerializeOptionNone, String* errorMessage = 0) const;
+    template<typename Iter> bool serialize(const Iter& itr, const SerializeOption& options = kSerializeOptionNone, String* errorMessage = 0) const;
     bool serialize(String& str, const SerializeOption& options = kSerializeOptionNone, String* errorMessage = 0) const;
     String serialize(const SerializeOption& options = kSerializeOptionNone, String* errorMessage = 0) const;
 
@@ -243,11 +243,9 @@ public:
 
 }; // AbstractParseHandler class
 
-template<typename Iter>
-inline Value parse(const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
+template<typename Iter> inline Value parse(const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
 inline Value parse(const String& str, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
-template<typename Iter>
-inline bool parse(Value& value, const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
+template<typename Iter> inline bool parse(Value& value, const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
 inline bool parse(Value& value, const String& str, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
 
 
@@ -401,23 +399,19 @@ public:
     }
 
 private:
-    template<typename Iter>
-    inline void to7BitUtf8(Iter& itr) const {
+    template<typename Iter> inline void to7BitUtf8(Iter& itr) const {
         *itr++ = bytes_[0];
     }
-    template<typename Iter>
-    inline void to11BitUtf8(Iter& itr) const {
+    template<typename Iter> inline void to11BitUtf8(Iter& itr) const {
         *itr++ = 0xc0 | (value_ >> 6);
         *itr++ = 0x80 | (bytes_[0] & 0x3f);
     }
-    template<typename Iter>
-    inline void to16BitUtf8(Iter& itr) const {
+    template<typename Iter> inline void to16BitUtf8(Iter& itr) const {
         *itr++ = 0xe0 | (value_ >> 12);
         *itr++ = 0x80 | ((value_ >> 6) & 0x3f);
         *itr++ = 0x80 | (bytes_[0] & 0x3f);
     }
-    template<typename Iter>
-    inline void to21BitUtf8(Iter& itr) const {
+    template<typename Iter> inline void to21BitUtf8(Iter& itr) const {
         *itr++ = 0xf0 | (value_ >> 18);
         *itr++ = 0x80 | ((value_ >> 12) & 0x3f);
         *itr++ = 0x80 | ((value_ >> 6) & 0x3f);
@@ -669,9 +663,9 @@ inline void Value::setString(const String& v) { _POCKETJSON_SET_CONAINER_IMPL(kS
 inline void Value::setArray(const Array& v) { _POCKETJSON_SET_CONAINER_IMPL(kArray, Array); }
 inline void Value::setObject(const Object& v) { _POCKETJSON_SET_CONAINER_IMPL(kObject, Object); }
 #undef JSON_SET_CONAINER_IMPL
+template<typename T> inline void Value::setEnum(const T& v) { this->setInteger(static_cast<long long>(v)); }
 
-template<typename Iter>
-inline bool Value::serialize(const Iter& itr, const SerializeOption& options, String* errorMessage) const {
+template<typename Iter> inline bool Value::serialize(const Iter& itr, const SerializeOption& options, String* errorMessage) const {
     Serializer s; return s.serialize(itr, *this, options, errorMessage);
 }
 inline bool Value::serialize(String& str, const SerializeOption& options, String* errorMessage) const {
@@ -713,13 +707,11 @@ inline long long strtoll(const char* nptr, char** endptr, int base) {
 inline bool is_range(const int64_t& value, const int64_t& minValue, const int64_t& maxValue) {
     return minValue <= value && value <= maxValue;
 }
-template<typename T>
-inline T double_to_value(const double& value, const double& minValue, const double& maxValue, const T& defaults) {
+template<typename T> inline T double_to_value(const double& value, const double& minValue, const double& maxValue, const T& defaults) {
     const double d = round(value);
     return minValue <= d && d <= maxValue ? static_cast<T>(d) : defaults;
 }
-template<typename T>
-inline T llstr_to_value(const String& str, const T& minValue, const T& maxValue, const T& defaults) {
+template<typename T> inline T llstr_to_value(const String& str, const T& minValue, const T& maxValue, const T& defaults) {
     char* endp = 0;
     const long long value = strtoll(str.c_str(), &endp, 0);
     return endp == str.c_str() + str.size() && is_range(value, minValue, maxValue) ? static_cast<T>(value) : defaults;
@@ -945,8 +937,7 @@ inline std::ostream& operator <<(std::ostream& os, const Value& v) {
     return os;
 }
 
-template<typename Iter>
-inline Value parse(const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
+template<typename Iter> inline Value parse(const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
     Parser parser;
     Value value;
     parser.parse(value, begin, end, options, errorMessage);
@@ -955,8 +946,7 @@ inline Value parse(const Iter& begin, const Iter& end, const ParseOption& option
 inline Value parse(const String& str, const ParseOption& options, String* errorMessage) {
     return parse(str.begin(), str.end(), options, errorMessage);
 }
-template<typename Iter>
-inline bool parse(Value& value, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
+template<typename Iter> inline bool parse(Value& value, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
     Parser parser;
     return parser.parse(value, begin, end, options, errorMessage);
 }
@@ -967,17 +957,14 @@ inline bool parse(Value& value, const String& str, const ParseOption& options, S
 /**
  * Parser class impelemtation.
  */
-template<typename Iter>
-inline bool Parser::parse(Value& value, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
+template<typename Iter> inline bool Parser::parse(Value& value, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
     return this->parse(&value, 0, begin, end, options, errorMessage);
 }
-template<typename Iter>
-inline bool Parser::parse(AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
+template<typename Iter> inline bool Parser::parse(AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
     return this->parse(0, handler, begin, end, options, errorMessage);
 }
 
-template<typename Iter>
-inline bool Parser::parse(Value* value, AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
+template<typename Iter> inline bool Parser::parse(Value* value, AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
     lastError_.clear();
     Iter itr = begin;
     this->skip_utf8_bom(itr, end);
@@ -995,8 +982,7 @@ inline bool Parser::parse(Value* value, AbstractParseHandler* handler, const Ite
     return ok;
 }
 
-template<typename Iter>
-inline bool Parser::parse_value(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
+template<typename Iter> inline bool Parser::parse_value(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
     this->skip_white_space(itr, end);
     if (*itr == '"') {
         return this->parse_string(value, handler, itr, end);
@@ -1046,8 +1032,7 @@ inline bool Parser::parse_value(Value* value, AbstractParseHandler* handler, Ite
         return this->fail("Unexpected character exists while parsing.");
     }
 }
-template<typename Iter>
-inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end) {
+template<typename Iter> inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end) {
     String str;
     bool isNegative = false;
     if (*itr == '-') {
@@ -1144,8 +1129,7 @@ inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, It
     }
     return true;
 }
-template<typename Iter>
-inline bool Parser::parse_string(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end) {
+template<typename Iter> inline bool Parser::parse_string(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end) {
     String str;
     if (this->parse_string(str, itr, end)) {
         if (value) {
@@ -1158,8 +1142,7 @@ inline bool Parser::parse_string(Value* value, AbstractParseHandler* handler, It
         return false;
     }
 }
-template<typename Iter>
-inline bool Parser::parse_hex(uint16_t& hex, Iter& itr, const Iter& end) {
+template<typename Iter> inline bool Parser::parse_hex(uint16_t& hex, Iter& itr, const Iter& end) {
     for (int16_t i = 12; i >= 0; i -= 4) {
         if (itr == end) { return false; }
         if ('0' <= *itr && *itr <= '9') {
@@ -1175,8 +1158,7 @@ inline bool Parser::parse_hex(uint16_t& hex, Iter& itr, const Iter& end) {
     }
     return true;
 }
-template<typename Iter>
-inline bool Parser::parse_unicode(String& str, Iter& itr, const Iter& end) {
+template<typename Iter> inline bool Parser::parse_unicode(String& str, Iter& itr, const Iter& end) {
     uint16_t u1 = 0;
     uint16_t u2 = 0;
     if (!this->parse_hex(u1, ++itr, end)) { return false; }
@@ -1195,8 +1177,7 @@ inline bool Parser::parse_unicode(String& str, Iter& itr, const Iter& end) {
     cp.toUtf8(std::back_inserter(str));
     return true;
 }
-template<typename Iter>
-inline bool Parser::parse_string(String& str, Iter& itr, const Iter& end) {
+template<typename Iter> inline bool Parser::parse_string(String& str, Iter& itr, const Iter& end) {
     while (++itr != end) {
         if (*itr == '"') {
             ++itr;
@@ -1222,8 +1203,7 @@ inline bool Parser::parse_string(String& str, Iter& itr, const Iter& end) {
     }
     return this->fail("Expected string ending character '\"' is not found.");
 }
-template<typename Iter>
-inline bool Parser::parse_array(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
+template<typename Iter> inline bool Parser::parse_array(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
     size_t count = 0;
     if (value) {
         value->setType(kArray);
@@ -1271,8 +1251,7 @@ inline bool Parser::parse_array(Value* value, AbstractParseHandler* handler, Ite
     }
     return true;
 }
-template<typename Iter>
-inline bool Parser::parse_object(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
+template<typename Iter> inline bool Parser::parse_object(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
     size_t count = 0;
     if (value) {
         value->setType(kObject);
@@ -1355,8 +1334,7 @@ inline bool Parser::fail(const String& error) {
 /**
  * Serializer class implementation.
  */
-template<typename Iter>
-inline bool Serializer::serialize(const Iter& itr, const Value& value, const SerializeOption& options, String* errorMessage) {
+template<typename Iter> inline bool Serializer::serialize(const Iter& itr, const Value& value, const SerializeOption& options, String* errorMessage) {
     Attributes attr;
     attr.pretty = options & kSerializeOptionPretty ? true : false;
     if (attr.pretty) {
@@ -1371,8 +1349,7 @@ inline bool Serializer::serialize(const Iter& itr, const Value& value, const Ser
     return this->serialize(tmp, value, attr, attr.pretty ? 0 : -1, errorMessage);
 }
 
-template<typename Iter>
-inline void Serializer::int64ToString(Iter itr, const int64_t& value) {
+template<typename Iter> inline void Serializer::int64ToString(Iter itr, const int64_t& value) {
     char buf[128] = {0};
 #ifdef _MSC_VER
     const int s = _snprintf_s(buf, 127, _TRUNCATE, "%lld", value);
@@ -1387,8 +1364,7 @@ inline String Serializer::int64ToString(const int64_t& value) {
     String s; Serializer::int64ToString(std::back_inserter(s), value); return s;
 }
 
-template<typename Iter>
-inline bool Serializer::serialize(Iter& itr, const Value& value, const Attributes& attr, const int& indentLevel, String* errorMessage) {
+template<typename Iter> inline bool Serializer::serialize(Iter& itr, const Value& value, const Attributes& attr, const int& indentLevel, String* errorMessage) {
     switch (value.type()) {
     case kNull: this->append(itr, "null"); break;
     case kBoolean:
@@ -1465,8 +1441,7 @@ inline bool Serializer::serialize(Iter& itr, const Value& value, const Attribute
     return true;
 }
 
-template<typename Iter>
-inline void Serializer::serialize_string(Iter& itr, const String& value) {
+template<typename Iter> inline void Serializer::serialize_string(Iter& itr, const String& value) {
     static char kHexDigits[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
     static const char kEscape[] = {
         'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f', 'r', 'u', 'u', // 00
@@ -1505,8 +1480,7 @@ inline void Serializer::serialize_string(Iter& itr, const String& value) {
     *itr++ = '"';
 }
 
-template<typename Iter>
-inline void Serializer::indent(Iter& itr, const Attributes& attr, const int& indent) {
+template<typename Iter> inline void Serializer::indent(Iter& itr, const Attributes& attr, const int& indent) {
     if (attr.pretty) {
         this->append(itr, attr.lineBreak);
         for (int i = 0; i < indent; ++i) {
@@ -1514,8 +1488,7 @@ inline void Serializer::indent(Iter& itr, const Attributes& attr, const int& ind
         }
     }
 }
-template<typename Iter>
-inline void Serializer::append(Iter& itr, const String& app) {
+template<typename Iter> inline void Serializer::append(Iter& itr, const String& app) {
     for (size_t i = 0; i < app.size(); ++i) {
         *itr++ = app[i];
     }
