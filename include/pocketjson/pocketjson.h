@@ -558,7 +558,7 @@ inline Value& Value::operator [](const String& key) {
     this->setType(kObject);
     if (container_->count() > 1) {
         this->release();
-        container_ = new Container<Object>();
+        container_ = new Container<Object>(container_->data<Object>());
     }
     return container_->data<Object>()[key];
 }
@@ -575,7 +575,7 @@ inline Value& Value::operator [](const size_t& index) {
     this->setType(kArray);
     if (container_->count() > 1) {
         this->release();
-        container_ = new Container<Array>();
+        container_ = new Container<Array>(container_->data<Array>());
     }
     Array& array = container_->data<Array>();
     if (index >= array.size()) {
