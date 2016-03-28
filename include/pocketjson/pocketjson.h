@@ -247,6 +247,8 @@ template<typename Iter> inline Value parse(const Iter& begin, const Iter& end, c
 inline Value parse(const String& str, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
 template<typename Iter> inline bool parse(Value& value, const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
 inline bool parse(Value& value, const String& str, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
+template<typename Iter> inline bool parse(AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
+inline bool parse(AbstractParseHandler* handler, const String& str, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
 
 
 /*-----------------------------------------------------------
@@ -965,6 +967,13 @@ template<typename Iter> inline bool parse(Value& value, const Iter& begin, const
 }
 inline bool parse(Value& value, const String& str, const ParseOption& options, String* errorMessage) {
     return parse(value, str.begin(), str.end(), options, errorMessage);
+}
+template<typename Iter> inline bool parse(AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
+    Parser parser;
+    return parser.parse(handler, begin, end, options, errorMessage);
+}
+inline bool parse(AbstractParseHandler* handler, const String& str, const ParseOption& options, String* errorMessage) {
+    return parse(handler, str.begin(), str.end(), options, errorMessage);
 }
 
 /**

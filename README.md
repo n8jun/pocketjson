@@ -80,10 +80,11 @@ if (!pocketjson::parse(value, json)) {
 ```
 #### Parse SAX type
 It requires the following steps to use SAX type parser.
+
 - Create your custom class derived from `pocketjson::AbstractParseHandler` class.
-- Create instance of `pocketjson::Parser` class.
 - Create instance of your custom parse handler class.
-- Call `parse` function of `pocketjson::Parser` class.
+- Call `parse` function with a pointer of your custom parse handler instance.
+
 ```
 class MyHandler: public pocketjson::AbstractParseHandler {
 public:
@@ -104,9 +105,8 @@ public:
 }; // MyHandler class
 
 const char* json = "{\"name\": \"pocketjson\"}";
-pocketjson::Parser p;
 MyHandler handler;
-if (!p.parse(&handler, json)) {
+if (!pocketjson::parse(&handler, json)) {
     // Error
 }
 ```
