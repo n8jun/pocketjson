@@ -267,22 +267,35 @@ public:
 private:
     template<typename Iter> bool parse(Value* value, AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options = kParseOptionNone, String* errorMessage = 0);
 
-    template<typename Iter> bool parse_value(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options);
-    template<typename Iter> bool parse_number(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end);
-    template<typename Iter> bool parse_string(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end);
-    template<typename Iter> bool parse_hex(uint16_t& hex, Iter& itr, const Iter& end);
-    template<typename Iter> bool parse_unicode(String& str, Iter& itr, const Iter& end);
-    template<typename Iter> bool parse_string(String& str, Iter& itr, const Iter& end);
-    template<typename Iter> bool parse_array(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options);
-    template<typename Iter> bool parse_object(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options);
+    template<typename Iter> bool parse_value(Value* value, AbstractParseHandler* handler, Iter& itr, const ParseOption& options);
+    template<typename Iter> bool parse_number(Value* value, AbstractParseHandler* handler, Iter& itr);
+    template<typename Iter> bool parse_string(Value* value, AbstractParseHandler* handler, Iter& itr);
+    template<typename Iter> bool parse_hex(uint16_t& hex, Iter& itr);
+    template<typename Iter> bool parse_unicode(String& str, Iter& itr);
+    template<typename Iter> bool parse_string(String& str, Iter& itr);
+    template<typename Iter> bool parse_array(Value* value, AbstractParseHandler* handler, Iter& itr, const ParseOption& options);
+    template<typename Iter> bool parse_object(Value* value, AbstractParseHandler* handler, Iter& itr, const ParseOption& options);
     template<typename CharType> bool is_white_space(const CharType& c);
-    template<typename Iter> void skip_white_space(Iter& itr, const Iter& end);
-    template<typename Iter> void skip_utf8_bom(Iter& itr, const Iter& end);
+    template<typename Iter> void skip_white_space(Iter& itr);
+    template<typename Iter> void skip_utf8_bom(Iter& itr);
 
     bool fail(const String& error);
 
 private:
     String lastError_;
+
+    template<typename Iter> class Iterator {
+    private:
+        Iter itr_;
+        Iter end_;
+    public:
+        inline Iterator(const Iter& itr, const Iter& end): itr_(itr), end_(end) {}
+        inline ~Iterator() {}
+    public:
+        inline Iterator& operator ++() { ++itr_; return *this; }
+        inline operator bool() const { return itr_ != end_; }
+        inline typename Iter::value_type operator *() const { return itr_ == end_ ? 0 : *itr_; }
+    }; // Iterator class
 
 }; // Parser class
 
@@ -966,13 +979,13 @@ template<typename Iter> inline bool Parser::parse(AbstractParseHandler* handler,
 
 template<typename Iter> inline bool Parser::parse(Value* value, AbstractParseHandler* handler, const Iter& begin, const Iter& end, const ParseOption& options, String* errorMessage) {
     lastError_.clear();
-    Iter itr = begin;
-    this->skip_utf8_bom(itr, end);
-    bool ok = this->parse_value(value, handler, itr, end, options);
+    Iterator<Iter> itr(begin, end);
+    this->skip_utf8_bom(itr);
+    bool ok = this->parse_value(value, handler, itr, options);
     if (ok) {
         if (!(options & kParseOptionAllowGabage)) {
-            this->skip_white_space(itr, end);
-            if (itr != end && *itr != 0) {
+            this->skip_white_space(itr);
+            if (itr && *itr != 0) {
                 lastError_ = "Gabage string exists after json string.";
                 ok = false;
             }
@@ -982,16 +995,16 @@ template<typename Iter> inline bool Parser::parse(Value* value, AbstractParseHan
     return ok;
 }
 
-template<typename Iter> inline bool Parser::parse_value(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
-    this->skip_white_space(itr, end);
+template<typename Iter> inline bool Parser::parse_value(Value* value, AbstractParseHandler* handler, Iter& itr, const ParseOption& options) {
+    this->skip_white_space(itr);
     if (*itr == '"') {
-        return this->parse_string(value, handler, itr, end);
+        return this->parse_string(value, handler, itr);
     } else if (*itr == '{') {
-        return this->parse_object(value, handler, itr, end, options);
+        return this->parse_object(value, handler, itr, options);
     } else if (*itr == '[') {
-        return this->parse_array(value, handler, itr, end, options);
+        return this->parse_array(value, handler, itr, options);
     } else if (*itr == '-' || ('0' <= *itr && *itr <= '9')) {
-        return this->parse_number(value, handler, itr, end);
+        return this->parse_number(value, handler, itr);
     } else if (*itr == 't') {
         if (*(++itr) == 'r' && *(++itr) == 'u' && *(++itr) == 'e') {
             if (value) {
@@ -1032,7 +1045,7 @@ template<typename Iter> inline bool Parser::parse_value(Value* value, AbstractPa
         return this->fail("Unexpected character exists while parsing.");
     }
 }
-template<typename Iter> inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end) {
+template<typename Iter> inline bool Parser::parse_number(Value* value, AbstractParseHandler* handler, Iter& itr) {
     String str;
     bool isNegative = false;
     if (*itr == '-') {
@@ -1129,9 +1142,9 @@ template<typename Iter> inline bool Parser::parse_number(Value* value, AbstractP
     }
     return true;
 }
-template<typename Iter> inline bool Parser::parse_string(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end) {
+template<typename Iter> inline bool Parser::parse_string(Value* value, AbstractParseHandler* handler, Iter& itr) {
     String str;
-    if (this->parse_string(str, itr, end)) {
+    if (this->parse_string(str, itr)) {
         if (value) {
             value->setString(str);
         } else if (handler && !handler->onString(str)) {
@@ -1142,9 +1155,8 @@ template<typename Iter> inline bool Parser::parse_string(Value* value, AbstractP
         return false;
     }
 }
-template<typename Iter> inline bool Parser::parse_hex(uint16_t& hex, Iter& itr, const Iter& end) {
+template<typename Iter> inline bool Parser::parse_hex(uint16_t& hex, Iter& itr) {
     for (int16_t i = 12; i >= 0; i -= 4) {
-        if (itr == end) { return false; }
         if ('0' <= *itr && *itr <= '9') {
             hex |= uint16_t(*itr - '0') << i;
         } else if ('a' <= *itr && *itr <= 'f') {
@@ -1158,17 +1170,17 @@ template<typename Iter> inline bool Parser::parse_hex(uint16_t& hex, Iter& itr, 
     }
     return true;
 }
-template<typename Iter> inline bool Parser::parse_unicode(String& str, Iter& itr, const Iter& end) {
+template<typename Iter> inline bool Parser::parse_unicode(String& str, Iter& itr) {
     uint16_t u1 = 0;
     uint16_t u2 = 0;
-    if (!this->parse_hex(u1, ++itr, end)) { return false; }
+    if (!this->parse_hex(u1, ++itr)) { return false; }
     if (0xd800 <= u1 && u1 <= 0xdfff) {
         if (0xdc00 <= u1) { return false; }
         // Surrogate pair
         if (*(++itr) != '\\' || *(++itr) != 'u') {
             return this->fail("Invalid unicode surrogate pair is found while parsing string.");
         }
-        if (!this->parse_hex(u2, ++itr, end)) { return false; }
+        if (!this->parse_hex(u2, ++itr)) { return false; }
         if (u2 < 0xdc00 || 0xdfff < u2) {
             return this->fail("Invalid unicode surrogate pair is found while parsing string.");
         }
@@ -1177,8 +1189,8 @@ template<typename Iter> inline bool Parser::parse_unicode(String& str, Iter& itr
     cp.toUtf8(std::back_inserter(str));
     return true;
 }
-template<typename Iter> inline bool Parser::parse_string(String& str, Iter& itr, const Iter& end) {
-    while (++itr != end) {
+template<typename Iter> inline bool Parser::parse_string(String& str, Iter& itr) {
+    while (++itr) {
         if (*itr == '"') {
             ++itr;
             return true;
@@ -1193,7 +1205,7 @@ template<typename Iter> inline bool Parser::parse_string(String& str, Iter& itr,
             case 'n': str.push_back('\n'); break;
             case 'r': str.push_back('\r'); break;
             case 't': str.push_back('\t'); break;
-            case 'u': if (!this->parse_unicode(str, itr, end)) { return false; } break;
+            case 'u': if (!this->parse_unicode(str, itr)) { return false; } break;
             default:
                 return this->fail("Unexpected escape character is found while parsing string.");
             }
@@ -1203,15 +1215,15 @@ template<typename Iter> inline bool Parser::parse_string(String& str, Iter& itr,
     }
     return this->fail("Expected string ending character '\"' is not found.");
 }
-template<typename Iter> inline bool Parser::parse_array(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
+template<typename Iter> inline bool Parser::parse_array(Value* value, AbstractParseHandler* handler, Iter& itr, const ParseOption& options) {
     size_t count = 0;
     if (value) {
         value->setType(kArray);
     } else if (handler && !handler->beginArray()) {
         return this->fail("SAX handler cancels parsing.");
     }
-    while (++itr != end) {
-        this->skip_white_space(itr, end);
+    while (++itr) {
+        this->skip_white_space(itr);
         if (*itr == ']') {
             if (count == 0 || (options & kParseOptionAllowCommaEnding)) {
                 if (handler && !handler->endArray(count)) {
@@ -1227,15 +1239,15 @@ template<typename Iter> inline bool Parser::parse_array(Value* value, AbstractPa
             bool ok = false;
             if (value) {
                 Value newValue;
-                ok = this->parse_value(&newValue, handler, itr, end, options);
+                ok = this->parse_value(&newValue, handler, itr, options);
                 value->push_back(newValue);
             } else {
-                ok = this->parse_value(0, handler, itr, end, options);
+                ok = this->parse_value(0, handler, itr, options);
             }
             if (!ok) { return false; }
             ++count;
 
-            this->skip_white_space(itr, end);
+            this->skip_white_space(itr);
             if (*itr == ',') {
                 continue;
             } else if (*itr == ']') {
@@ -1251,39 +1263,39 @@ template<typename Iter> inline bool Parser::parse_array(Value* value, AbstractPa
     }
     return true;
 }
-template<typename Iter> inline bool Parser::parse_object(Value* value, AbstractParseHandler* handler, Iter& itr, const Iter& end, const ParseOption& options) {
+template<typename Iter> inline bool Parser::parse_object(Value* value, AbstractParseHandler* handler, Iter& itr, const ParseOption& options) {
     size_t count = 0;
     if (value) {
         value->setType(kObject);
     } else if (handler && !handler->beginObject()) {
         return this->fail("SAX handler cancels parsing.");
     }
-    while (++itr != end) {
-        this->skip_white_space(itr, end);
+    while (++itr) {
+        this->skip_white_space(itr);
         if (*itr == '"') {
             String key;
-            if (!this->parse_string(key, itr, end)) {
+            if (!this->parse_string(key, itr)) {
                 return false;
             }
             if (handler && !handler->onObjectKey(key)) {
                 return this->fail("SAX handler cancels parsing.");
             }
 
-            this->skip_white_space(itr, end);
+            this->skip_white_space(itr);
             if (*itr == ':') {
                 ++itr;
                 bool ok = false;
                 if (value) {
                     Value newValue;
-                    ok = this->parse_value(&newValue, handler, itr, end, options);
+                    ok = this->parse_value(&newValue, handler, itr, options);
                     value->insert(key, newValue);
                 } else {
-                    ok = this->parse_value(0, handler, itr, end, options);
+                    ok = this->parse_value(0, handler, itr, options);
                 }
                 if (!ok) { return false; }
                 ++count;
 
-                this->skip_white_space(itr, end);
+                this->skip_white_space(itr);
                 if (*itr == ',') {
                     continue;
                 } else if (*itr == '}') {
@@ -1316,12 +1328,12 @@ template<typename Iter> inline bool Parser::parse_object(Value* value, AbstractP
 template<typename CharType> inline bool Parser::is_white_space(const CharType& c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
-template<typename Iter> inline void Parser::skip_white_space(Iter& itr, const Iter& end) {
-    while (itr != end && is_white_space(*itr)) {
+template<typename Iter> inline void Parser::skip_white_space(Iter& itr) {
+    while (itr && is_white_space(*itr)) {
         ++itr;
     }
 }
-template<typename Iter> inline void Parser::skip_utf8_bom(Iter& itr, const Iter& end) {
+template<typename Iter> inline void Parser::skip_utf8_bom(Iter& itr) {
     if (*itr == 0xef && *(++itr) == 0xbb && *(++itr) == 0xbf) {
         ++itr;
     }
