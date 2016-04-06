@@ -24,11 +24,17 @@
 #if _MSC_VER >= 1600
 #define _POCKETJSON_HAS_RVALUE_REFERENCES
 #endif
-#else
-#if (__has_feature(cxx_rvalue_references) || defined(__GXX_EXPERIMENTAL_CXX0X__))
+#endif
+
+#if defined(__has_feature)
+#if __has_feature(cxx_rvalue_references)
 #define _POCKETJSON_HAS_RVALUE_REFERENCES
 #endif
-#endif // _MSC_VER
+#endif
+
+#if defined(__GXX_EXPERIMENTAL_CXX0X__)
+#define _POCKETJSON_HAS_RVALUE_REFERENCES
+#endif
 
 namespace pocketjson {
 
