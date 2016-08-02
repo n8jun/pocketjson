@@ -1349,7 +1349,7 @@ template<typename Iter> inline void Parser::skip_white_space(Iter& itr) {
     }
 }
 template<typename Iter> inline void Parser::skip_utf8_bom(Iter& itr) {
-    if (*itr == 0xef && *(++itr) == 0xbb && *(++itr) == 0xbf) {
+    if ((unsigned char)(*itr) == 0xef && (unsigned char)(*(++itr)) == 0xbb && (unsigned char)(*(++itr)) == 0xbf) {
         ++itr;
     }
 }
