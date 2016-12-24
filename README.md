@@ -3,19 +3,23 @@ Header only JSON parser &amp; serializer for C++
 
 [![Build Status](https://travis-ci.org/n8jun/pocketjson.svg?branch=master)](https://travis-ci.org/n8jun/pocketjson)
 
-Copyright (c) 2016 Jun Nishimura
-
 ## Usage
+
 Add and include `pocketjson.h` in your project to use pocketjson.
+
 ```
 #include <pocketjson/pocketjson.h>
 ```
+
 ### Value
+
 #### Set value
+
 `pocketjson::Value` class prepares some setter functions.
 Use `operator =` or `void set***()` to set value.
 `operator []` is also available for Array or Object type.
 These functions change value type automatically.
+
 ```
 pocketjson::Value value; // null
 value = true; // bool
@@ -27,8 +31,11 @@ value.push_back(123); // add array item
 value["key"] = 3.14; // object (automatically insert key)
 value.insert("name", "pocketjson"); // insert object pair
 ```
+
 #### Check type
+
 Use `bool is***() const` or `bool is<T>() const` function to check value type.
+
 ```
 if (value.isObject()) {
     // value is object type.
@@ -37,10 +44,13 @@ if (value.is<std::string>()) {
     // value is string type.
 }
 ```
+
 #### Get value
+
 Use `T to***() const` function to get value.
 It can be set fallback value for nonconvertible value type.
 Boolean, Integer, Float or String type value can convert to each other value type.
+
 ```
 // "null" returns when value is null, array or object.
 std::string str = value.toString("null");
@@ -50,20 +60,27 @@ double num = value.toDouble();
 ```
 
 ### Parse
+
 pocketjson prepares DOM and SAX type parser.
 
 #### Parse simply
+
 ```
 const char* json = "{\"name\": \"pocketjson\"}";
 pocketjson::Value value = pocketjson::parse(json);
 ```
+
 #### Parse loose format JSON string
+
 Set parse options to allow comma ending of object or array.
+
 ```
 const char* json = "{\"name\": \"pocketjson\",}";
 pocketjson::Value value = pocketjson::parse(json, pocketjson::kParseOptionAllowLooseFormat);
 ```
+
 #### Get parse error
+
 ```
 const char* json = "{\"name\": \"pocketjson\",}";
 // Check with error message.
@@ -78,7 +95,9 @@ if (!pocketjson::parse(value, json)) {
     // Error
 }
 ```
+
 #### Parse SAX type
+
 It requires the following steps to use SAX type parser.
 
 - Create your custom class derived from `pocketjson::AbstractParseHandler` class.
@@ -110,8 +129,11 @@ if (!pocketjson::parse(&handler, json)) {
     // Error
 }
 ```
+
 ### Serialize
+
 `pocketjson::Value` class has `std::string serialize() const` function which supports pretty options.
+
 ```
 pocketjson::Value value;
 value["name"] = "pocketjson";
@@ -120,4 +142,7 @@ std::string prettyJson = value.serialize(pocketjson::kSerializeOptionPretty);
 ```
 
 ## License
+
 Distributed under the [Boost Software License, Version 1.0](http://www.boost.org/LICENSE_1_0.txt).
+
+Copyright (c) 2016 Jun Nishimura
