@@ -684,7 +684,7 @@ inline void Value::setString(const String& v) { _POCKETJSON_SET_CONAINER_IMPL(kS
 inline void Value::setArray(const Array& v) { _POCKETJSON_SET_CONAINER_IMPL(kArray, Array); }
 inline void Value::setObject(const Object& v) { _POCKETJSON_SET_CONAINER_IMPL(kObject, Object); }
 #undef JSON_SET_CONAINER_IMPL
-template<typename T> inline void Value::setEnum(const T& v) { this->setInteger(static_cast<unsigned long long>(v)); }
+template<typename T> inline void Value::setEnum(const T& v) { this->setInteger(static_cast<int>(v)); }
 
 template<typename Iter> inline bool Value::serialize(const Iter& itr, const SerializeOption& options, String* errorMessage) const {
     Serializer s; return s.serialize(itr, *this, options, errorMessage);
@@ -879,7 +879,7 @@ inline String Value::toString(const String& defaults) const {
     return defaults;
 }
 template<typename T> inline T Value::toEnum(const T& defaults) const {
-    return static_cast<T>(this->toULLong(static_cast<unsigned long long>(defaults)));
+    return static_cast<T>(this->toInt(static_cast<int>(defaults)));
 }
 
 inline bool Value::empty() const {
