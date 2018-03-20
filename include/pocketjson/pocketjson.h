@@ -1381,7 +1381,7 @@ template<typename Iter> inline void Serializer::int64ToString(Iter itr, const in
 #ifdef _MSC_VER
     const int s = _snprintf_s(buf, 127, _TRUNCATE, "%lld", value);
 #else
-    const int s = snprintf(buf, 127, "%lld", value);
+    const int s = snprintf(buf, 127, "%lld", static_cast<long long>(value));
 #endif
     for (int i = 0; i < s; ++i) {
         *itr++ = buf[i];
