@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <limits.h>
+#include <locale.h>
 #include <string>
 #include <vector>
 #include <iterator>
@@ -358,6 +359,20 @@ public:
     static const int kSignificandBitSize = 52;
     static const int kExponentBias = 0x3ff;
 
+    static inline double strToDouble(const char* str, bool* success) {
+        String tmp = str;
+        const char* decimal = ::localeconv()->decimal_point;
+        const size_t pos = tmp.find('.');
+        if (pos != String::npos) {
+            tmp.replace(pos, 1, 1, decimal[0]);
+        }
+
+        char* endp = 0;
+        const double result = strtod(tmp.c_str(), &endp);
+        *success = (endp == tmp.c_str() + tmp.size());
+        return result;
+    }
+
     template<typename Iter>
     inline bool toString(Iter itr) const {
         if (isZero()) {
@@ -372,13 +387,18 @@ public:
             return false;
         } else {
             char buf[128] = {0};
+            const char* decimal = ::localeconv()->decimal_point;
 #ifdef _MSC_VER
             const int s = _snprintf_s(buf, 127, _TRUNCATE, "%.17g", d_);
 #else
             const int s = snprintf(buf, 127, "%.17g", d_);
 #endif
             for (int i = 0; i < s; ++i) {
-                *itr++ = buf[i];
+                if (buf[i] == decimal[0]) {
+                    *itr++ = '.';
+                } else {
+                    *itr++ = buf[i];
+                }
             }
             return true;
         }
@@ -837,16 +857,17 @@ inline unsigned long long Value::toULLong(const unsigned long long& defaults) co
     }
     return defaults;
 }
+
 inline float Value::toFloat(const float& defaults) const {
     switch (type_) {
     case kFloat: return static_cast<float>(float_);
     case kInteger: return static_cast<float>(integer_);
     case kBoolean: return boolean_ ? 1.0f : 0.0f;
     case kString: {
-        char* endp = 0;
         const String& str = container_->data<String>();
-        const float value = static_cast<float>(strtod(str.c_str(), &endp));
-        return endp == str.c_str() + str.size() ? value : defaults;
+        bool ok = false;
+        const float value = static_cast<float>(Double::strToDouble(str.c_str(), &ok));
+        return ok ? value : defaults;
     }
     default: break;
     }
@@ -858,10 +879,10 @@ inline double Value::toDouble(const double& defaults) const {
     case kInteger: return static_cast<double>(integer_);
     case kBoolean: return boolean_ ? 1.0 : 0.0;
     case kString: {
-        char* endp = 0;
         const String& str = container_->data<String>();
-        const double value = strtod(str.c_str(), &endp);
-        return endp == str.c_str() + str.size() ? value : defaults;
+        bool ok = false;
+        const double value = Double::strToDouble(str.c_str(), &ok);
+        return ok ? value : defaults;
     }
     default: break;
     }
@@ -1142,9 +1163,9 @@ template<typename Iter> inline bool Parser::parse_number(Value* value, AbstractP
         }
     } else {
         if (expExists && exp == 0) { str.erase(str.find('e')); }
-        char* endp = 0;
-        const double f64 = strtod(str.c_str(), &endp);
-        if (endp == str.c_str() + str.size()) {
+        bool ok = false;
+        const double f64 = Double::strToDouble(str.c_str(), &ok);
+        if (ok) {
             if (value) {
                 value->setFloat(f64);
             } else if (handler && !handler->onFloat(f64)) {
