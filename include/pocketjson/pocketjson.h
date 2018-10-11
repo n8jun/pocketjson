@@ -567,9 +567,8 @@ inline bool Value::operator !=(const Value& rhs) const {
 inline Value::Value(Value&& v): type_(v.type_), integer_(v.integer_) { v.integer_ = 0; }
 inline Value& Value::operator =(Value&& rhs) {
     if (this != &rhs) {
-        type_ = rhs.type_;
-        integer_ = rhs.integer_;
-        rhs.integer_ = 0;
+        std::swap(type_, rhs.type_);
+        std::swap(integer_, rhs.integer_);
     }
     return *this;
 }
@@ -821,9 +820,9 @@ inline unsigned int Value::toUInt(const unsigned int& defaults) const {
 inline unsigned long Value::toULong(const unsigned long& defaults) const {
     switch (type_) {
     case kInteger: return integer_ > 0 ? static_cast<unsigned long>(integer_) : defaults;
-    case kFloat: return double_to_value<unsigned long>(float_, 0, static_cast<double>(ULONG_MAX), defaults);
+    case kFloat: return double_to_value<unsigned long>(float_, 0, static_cast<double>((ULONG_MAX == ULLONG_MAX) ? LLONG_MAX : ULONG_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
-    case kString: return llstr_to_value<unsigned long>(container_->data<String>(), 0, ULONG_MAX, defaults);
+    case kString: return llstr_to_value<unsigned long>(container_->data<String>(), 0, (ULONG_MAX == ULLONG_MAX) ? LLONG_MAX : ULONG_MAX, defaults);
     default: break;
     }
     return defaults;
@@ -831,9 +830,9 @@ inline unsigned long Value::toULong(const unsigned long& defaults) const {
 inline unsigned long long Value::toULLong(const unsigned long long& defaults) const {
     switch (type_) {
     case kInteger: return integer_ > 0 ? static_cast<unsigned long long>(integer_) : defaults;
-    case kFloat: return double_to_value<unsigned long long>(float_, 0, static_cast<double>(ULLONG_MAX), defaults);
+    case kFloat: return double_to_value<unsigned long long>(float_, 0, static_cast<double>(LLONG_MAX), defaults);
     case kBoolean: return boolean_ ? 1 : 0;
-    case kString: return llstr_to_value<unsigned long long>(container_->data<String>(), 0, ULLONG_MAX, defaults);
+    case kString: return llstr_to_value<unsigned long long>(container_->data<String>(), 0, LLONG_MAX, defaults);
     default: break;
     }
     return defaults;
