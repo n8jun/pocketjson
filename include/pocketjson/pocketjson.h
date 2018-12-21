@@ -709,7 +709,7 @@ template<typename Iter> inline bool Value::serialize(const Iter& itr, const Seri
     Serializer s; return s.serialize(itr, *this, options, errorMessage);
 }
 inline bool Value::serialize(String& str, const SerializeOption& options, String* errorMessage) const {
-    String s; return this->serialize(std::back_inserter(s), options, errorMessage);
+    return this->serialize(std::back_inserter(str), options, errorMessage);
 }
 inline String Value::serialize(const SerializeOption& options, String* errorMessage) const {
     String s; this->serialize(std::back_inserter(s), options, errorMessage); return s;
